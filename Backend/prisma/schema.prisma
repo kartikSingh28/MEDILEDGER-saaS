@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+
+  records   Record[]
+}
+
+model Record {
+  id        Int      @id @default(autoincrement())
+  cid       String
+  hash      String
+  patientId Int
+  createdAt DateTime @default(now())
+
+  patient   User     @relation(fields: [patientId], references: [id])
+}
+
+model Permission {
+  id       Int @id @default(autoincrement())
+  recordId Int
+  doctorId Int
+  allowed  Boolean @default(false)
+}
