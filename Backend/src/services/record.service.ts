@@ -1,6 +1,6 @@
 import  fs from "fs";
 import { prisma } from "../lib/prisma";
-import { encryptFile,hashFile } from "../utils/encryption";
+import { encryptFile,hashFile,decryptFile } from "../utils/encryption";
 
 export async function uploadRecord(filePath:string,patientId:number){
     const encryptedPath=filePath+".enc";
@@ -21,4 +21,24 @@ export async function uploadRecord(filePath:string,patientId:number){
         },
     });
     return record;
+}
+
+//downlaoding funcn
+
+export async function downloadRecord(recordId:number,userId:number){
+    const record= await prisma.record.findUnique({
+        where:{id:recordId},
+    });
+
+    if(!record){
+        throw new Error("Record not found");
+
+    }
+
+    /*const decryptedPath=record.cid+".dec"*/
+    const decryptedPath = record.cid.replace(".enc", "");
+    
+    await decryptFile(record.cid,decryptedPath);
+
+    return decryptedPath;
 }
