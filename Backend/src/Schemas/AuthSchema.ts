@@ -10,7 +10,7 @@ export const signupSchema=z.object({
 
 export const signinSchema=z.object({
     email:z.string().email(),
-    password:z.string().min(5).max(10),
+    password:z.string().min(5).max(100),
 });
 
 export type SignUpInput=z.infer<typeof signupSchema>;

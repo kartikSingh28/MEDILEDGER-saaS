@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "private": true,
   "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
@@ -13,6 +13,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.6",
@@ -20,6 +21,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
+    "pg": "^8.18.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -29,9 +31,11 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.2.0",
+    "@types/pg": "^8.16.0",
     "nodemon": "^3.1.11",
     "prisma": "^7.3.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }

@@ -1,21 +1,23 @@
 import express from "express";
-import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import cors from "cors";
+import "dotenv/config";
 
-dotenv.config();
-
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-});
+import userRouter from "./routes/userRoute";
 
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
-app.get("/", async (_req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
+app.get("/", (_req, res) => {
+  res.send(" MediLedger Backend Running");
 });
 
-app.listen(5000, () => {
-  console.log(" Server running on http://localhost:5000");
+
+app.use("/user", userRouter);
+
+const PORT = 5000;
+
+app.listen(PORT, () => {
+  console.log(` Server running at http://localhost:${PORT}`);
 });
