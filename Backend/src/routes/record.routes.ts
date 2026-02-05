@@ -38,14 +38,9 @@ recordRouter.post(
   }
 );
 
-
-// =======================
-// Download (IPFS version)
-// =======================
 recordRouter.get("/:id", requireAuth, async (req, res) => {
   try {
 
-    // ✅ get buffer + filename
     const { buffer, filename } = await downloadRecord(
       Number(req.params.id),
       (req as any).user.userId
