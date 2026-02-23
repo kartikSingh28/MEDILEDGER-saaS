@@ -7,15 +7,18 @@ import recordRouter from "../src/routes/record.routes";
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
+
+app.use(cors({
+  origin: "http://localhost:5173",
+}));
 
 app.get("/", (_req, res) => {
   res.send(" MediLedger Backend Running");
 });
 
 
-app.use("/user", userRouter);
+app.use("/auth", userRouter);
 app.use("/records",recordRouter);
 
 const PORT = 5000;

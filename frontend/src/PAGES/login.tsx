@@ -9,33 +9,38 @@ export function Login() {
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const res = await fetch("http://localhost:5000/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
-      });
+  try {
+    const res = await fetch("http://localhost:5000/auth/signin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Login failed");
-      }
-
-      // Save token
-      localStorage.setItem("token", data.token);
-
-      // Redirect
-      navigate("/dashboard");
-
-    } catch (err: any) {
-      setError(err.message);
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
     }
-  };
+
+    // Save token + role
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("role", data.user.role);
+
+    // Role-based redirect
+    if (data.user.role === "PATIENT") {
+      navigate("/patient");
+    } else if (data.user.role === "DOCTOR") {
+      navigate("/doctor");
+    }
+
+  } catch (err: any) {
+    setError(err.message);
+  }
+};
 
   return (
     <div className="h-screen flex items-center justify-center bg-gray-900">

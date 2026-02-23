@@ -5,10 +5,6 @@ import { uploadRecord, downloadRecord } from "../services/record.service";
 
 const recordRouter = Router();
 
-
-// =======================
-// Upload (IPFS version)
-// =======================
 recordRouter.post(
   "/upload",
   requireAuth,
