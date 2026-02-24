@@ -12,6 +12,12 @@ enum Role {
   ADMIN
 }
 
+enum PermissionStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -20,7 +26,9 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  records   Record[]
+  records            Record[]
+  doctorPermissions  Permission[] @relation("DoctorPermissions")
+  patientPermissions Permission[] @relation("PatientPermissions")
 }
 
 model Record {
@@ -31,12 +39,23 @@ model Record {
   patientId Int
   createdAt DateTime @default(now())
 
-  patient   User     @relation(fields: [patientId], references: [id])
+  patient     User        @relation(fields: [patientId], references: [id])
+  permissions Permission[]
 }
 
 model Permission {
-  id       Int @id @default(autoincrement())
-  recordId Int
-  doctorId Int
-  allowed  Boolean @default(false)
+  id        Int      @id @default(autoincrement())
+  recordId  Int
+  doctorId  Int
+  patientId Int
+
+  status    PermissionStatus @default(PENDING)
+  allowed   Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  record  Record @relation(fields: [recordId], references: [id])
+  doctor  User   @relation("DoctorPermissions", fields: [doctorId], references: [id])
+  patient User   @relation("PatientPermissions", fields: [patientId], references: [id])
 }
