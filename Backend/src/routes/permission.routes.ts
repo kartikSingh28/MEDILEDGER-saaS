@@ -1,8 +1,11 @@
 import { Router, Request, Response } from "express";
-import { PrismaClient, PermissionStatus } from "@prisma/client";
+
 import { requireAuth, requireRole } from "../../middleware/AuthMiddleware";
 
-const prisma = new PrismaClient();
+import { PermissionStatus } from "@prisma/client";
+import { prisma } from "../lib/prisma";
+
+
 const PermissionRouter = Router();
 
 PermissionRouter.post(
@@ -11,7 +14,7 @@ PermissionRouter.post(
   requireRole("DOCTOR"),
   async (req: Request, res: Response) => {
     try {
-      const doctorId = (req as any).user.userId;
+      const doctorId = Number((req as any).user.userId);
       const { recordId } = req.body;
 
       if (!recordId) {
@@ -67,7 +70,7 @@ PermissionRouter.get(
   requireRole("DOCTOR"),
   async (req: Request, res: Response) => {
     try {
-      const doctorId = (req as any).user.userId;
+      const doctorId = Number((req as any).user.userId);
 
       const requests = await prisma.permission.findMany({
         where: { doctorId },
@@ -90,31 +93,36 @@ PermissionRouter.get(
   requireRole("PATIENT"),
   async (req: Request, res: Response) => {
     try {
-      const patientId = (req as any).user.userId;
+      const patientId = Number((req as any).user.userId);
 
-      const requests = await prisma.permission.findMany({
+      console.log("🔵 Logged in patient:", patientId);
+
+      const allPermissions = await prisma.permission.findMany();
+      console.log("🔴 ALL PERMISSIONS:", allPermissions);
+
+      const filtered = await prisma.permission.findMany({
         where: { patientId },
         include: {
           doctor: true,
           record: true,
         },
-        orderBy: { createdAt: "desc" },
       });
 
-      res.json({ requests });
+      console.log("🟢 FILTERED PERMISSIONS:", filtered);
+
+      res.json({ requests: filtered });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   }
 );
-
 PermissionRouter.post(
   "/approve/:id",
   requireAuth,
   requireRole("PATIENT"),
   async (req: Request, res: Response) => {
     try {
-      const patientId = (req as any).user.userId;
+      const patientId = Number((req as any).user.userId);
       const permissionId = Number(req.params.id);
 
       const permission = await prisma.permission.findUnique({
@@ -149,7 +157,7 @@ PermissionRouter.post(
   requireRole("PATIENT"),
   async (req: Request, res: Response) => {
     try {
-      const patientId = (req as any).user.userId;
+      const patientId = Number((req as any).user.userId);
       const permissionId = Number(req.params.id);
 
       const permission = await prisma.permission.findUnique({

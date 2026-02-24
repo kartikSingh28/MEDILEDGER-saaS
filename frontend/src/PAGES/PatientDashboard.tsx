@@ -25,7 +25,7 @@ interface Record {
 
 
 interface AccessLog {
-  id: string;
+  id: number;
   doctorName: string;
   accessedAt: string;
   recordName: string;
@@ -41,59 +41,81 @@ export function PatientDashboard() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "records" | "access" | "security">("upload");
   const [userName, setUserName] = useState("");
+  const showMessage = (
+  text: string,
+  type: "success" | "error" | "info"
+) => {
+  setMessage(text);
+  setMessageType(type);
+
+  setTimeout(() => {
+    setMessage("");
+  }, 3000);
+};
 
   // Fetch user records on mount
-  useEffect(() => {
-    fetchRecords();
-    fetchAccessLogs();
-    fetchUserProfile();
-  }, []);
+ // Fetch records once on mount
+useEffect(() => {
+  fetchRecords();
+}, []);
 
- const fetchUserProfile = async () => {
+// Auto refresh access logs when Access tab is open
+useEffect(() => {
+  if (activeTab === "access") {
+    fetchAccessLogs();
+
+    const interval = setInterval(() => {
+      fetchAccessLogs();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }
+}, [activeTab]);
+
+const fetchRecords = async () => {
   try {
-    const res = await fetch("http://localhost:5000/user/profile", {
+    const res = await fetch("http://localhost:5000/records/mine", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`
       }
     });
+
     const data = await res.json();
+
     if (res.ok) {
-      setUserName(data.name || "Patient");
+      console.log("Records from backend:", data);
+      setRecords(data);   
     }
   } catch (err) {
-    console.error("Failed to fetch profile");
+    console.error("Failed to fetch records");
   }
 };
 
-
-  const fetchRecords = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/records/mine", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setRecords(data.records || []);
+const fetchAccessLogs = async () => {
+  try {
+    const res = await fetch("http://localhost:5000/permissions/for-patient", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
       }
-    } catch (err) {
-      console.error("Failed to fetch records");
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setAccessLogs(
+        data.requests.map((req: any) => ({
+          id: req.id,
+          doctorName: req.doctor?.name || "Doctor",
+          accessedAt: req.createdAt,
+          recordName: req.record?.filename,
+          status: req.status.toLowerCase()
+        }))
+      );
     }
-  };
-
-  const fetchAccessLogs = async () => {
-    // Mock data - replace with actual API call when backend ready
-    setAccessLogs([
-      {
-        id: "1",
-        doctorName: "Dr. Sarah Johnson",
-        accessedAt: new Date().toISOString(),
-        recordName: "Blood Test Report",
-        status: "pending"
-      }
-    ]);
-  };
+  } catch (err) {
+    console.error("Failed to fetch access logs");
+  }
+};
 
   const handleUpload = async () => {
     if (!file) {
@@ -161,6 +183,46 @@ export function PatientDashboard() {
     showMessage(err.message, "error");
   } finally {
     setLoading(false);
+  }
+};
+const handleApprove = async (id: number) => {
+  try {
+    const res = await fetch(
+      `http://localhost:5000/permissions/approve/${id}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    if (res.ok) {
+      showMessage("Access approved successfully", "success");
+      fetchAccessLogs();
+    }
+  } catch (err) {
+    showMessage("Failed to approve request", "error");
+  }
+};
+const handleDeny = async (id: number) => {
+  try {
+    const res = await fetch(
+      `http://localhost:5000/permissions/deny/${id}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    if (res.ok) {
+      showMessage("Access denied", "success");
+      fetchAccessLogs();
+    }
+  } catch (err) {
+    showMessage("Failed to deny request", "error");
   }
 };
 
@@ -395,6 +457,9 @@ export function PatientDashboard() {
                           </div>
                           <div className="flex-1">
                             <h3 className="text-white font-medium mb-1">{record.filename}</h3>
+                            <p className="text-xs text-gray-500 mb-1">
+                            Record ID: {record.id}
+                            </p>
                             <div className="space-y-1">
                               <p className="text-gray-400 text-sm flex items-center">
                                 <Clock size={14} className="mr-1" />
@@ -473,10 +538,15 @@ export function PatientDashboard() {
                         </div>
                         {log.status === "pending" && (
                           <div className="flex space-x-2">
-                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
-                              Approve
+                            <button
+                                onClick={() => handleApprove(log.id)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+                               >
+                                Approve
                             </button>
-                            <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
+                            <button
+                             onClick={() => handleDeny(log.id)}
+                             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
                               Deny
                             </button>
                           </div>

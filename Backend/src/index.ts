@@ -3,12 +3,10 @@ import cors from "cors";
 import "dotenv/config";
 
 import userRouter from "./routes/userRoute";
-import recordRouter from "../src/routes/record.routes";
-import PermissionRouter from "./routes/permission.routes";
+import recordRouter from "./routes/record.routes";
+import permissionRouter from "./routes/permission.routes";
 
-app.use("/permissions",PermissionRouter);
-
-const app = express();
+const app = express(); // ✅ FIRST create app
 
 app.use(express.json());
 
@@ -17,15 +15,16 @@ app.use(cors({
 }));
 
 app.get("/", (_req, res) => {
-  res.send(" MediLedger Backend Running");
+  res.send("MediLedger Backend Running");
 });
 
 
 app.use("/auth", userRouter);
-app.use("/records",recordRouter);
+app.use("/records", recordRouter);
+app.use("/permissions", permissionRouter);
 
 const PORT = 5000;
 
 app.listen(PORT, () => {
-  console.log(` Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
