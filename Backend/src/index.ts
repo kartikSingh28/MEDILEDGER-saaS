@@ -4,6 +4,9 @@ import "dotenv/config";
 
 import userRouter from "./routes/userRoute";
 import recordRouter from "../src/routes/record.routes";
+import PermissionRouter from "./routes/permission.routes";
+
+app.use("/permissions",PermissionRouter);
 
 const app = express();
 

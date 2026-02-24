@@ -6,6 +6,9 @@ import { prisma } from "../lib/prisma";
 
 const recordRouter = Router();
 
+/* =========================
+   Upload Record (Patient Only)
+========================= */
 recordRouter.post(
   "/upload",
   requireAuth,
@@ -13,8 +16,6 @@ recordRouter.post(
   upload.single("file"),
   async (req: Request, res: Response) => {
     try {
-      console.log(" Upload route hit");
-
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
@@ -27,28 +28,27 @@ recordRouter.post(
         userId
       );
 
-      console.log(" Record saved:", record);
-
       res.status(201).json({
         message: "Uploaded successfully",
         record,
       });
     } catch (e: any) {
-      console.error(" Upload error:", e.message);
       res.status(500).json({ error: e.message });
     }
   }
 );
+
 recordRouter.get(
   "/mine",
   requireAuth,
+  requireRole("PATIENT"),
   async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.userId;
 
       const records = await prisma.record.findMany({
         where: { patientId: userId },
-        orderBy: { createdAt: "desc" }
+        orderBy: { createdAt: "desc" },
       });
 
       res.json(records);
@@ -58,18 +58,62 @@ recordRouter.get(
   }
 );
 
-
-/* =========================
-   Download Record
-========================= */
 recordRouter.get(
   "/:id",
   requireAuth,
   async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      const recordId = Number(req.params.id);
+
+      // Fetch record first
+      const record = await prisma.record.findUnique({
+        where: { id: recordId },
+      });
+
+      if (!record) {
+        return res.status(404).json({ message: "Record not found" });
+      }
+
+      /* ----------------------------------
+         CASE 1: PATIENT (Owner)
+      ---------------------------------- */
+      if (user.role === "PATIENT") {
+        if (record.patientId !== user.userId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      /* ----------------------------------
+         CASE 2: DOCTOR (Check Permission)
+      ---------------------------------- */
+      if (user.role === "DOCTOR") {
+        const permission = await prisma.permission.findFirst({
+          where: {
+            recordId: record.id,
+            doctorId: user.userId,
+            allowed: true,
+          },
+        });
+
+        if (!permission) {
+          return res
+            .status(403)
+            .json({ message: "Access denied. Not approved by patient." });
+        }
+      }
+
+      /* ----------------------------------
+         CASE 3: ADMIN (optional)
+      ---------------------------------- */
+      if (user.role === "ADMIN") {
+        // Allow access or restrict based on your logic
+      }
+
+      // If passed checks → decrypt & send
       const { buffer, filename } = await downloadRecord(
-        Number(req.params.id),
-        (req as any).user.userId
+        recordId,
+        user.userId
       );
 
       res.setHeader(
