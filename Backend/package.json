@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "fabric:sync": "tsx src/scripts/syncLedger.ts"
+    "fabric:sync": "tsx src/scripts/syncLedger.ts",
+    "create-admin": "tsx src/scripts/createAdmin.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.5",
@@ -22,6 +23,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "fabric-ca-client": "^2.2.20",
+    "fabric-common": "^2.2.20",
     "ipfs-http-client": "^56.0.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",

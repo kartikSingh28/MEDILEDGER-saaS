@@ -6,6 +6,7 @@
   downloads and consent changes for them would fail. This brings the
   ledger up to the Postgres state. It reads the ledger first and only
   writes what is missing, so re-running it adds nothing to the audit trail.
+  Each write is signed by the user who made it (patient or doctor).
 
   Usage: npm run fabric:sync
 */
@@ -26,10 +27,10 @@ async function main() {
 
   console.log(`Checking ${records.length} records`);
   for (const r of records) {
-    const anchored = await ledger.getRecord(r.id);
+    const anchored = await ledger.getRecord(r.patientId, r.id);
 
     if (!anchored) {
-      await ledger.registerRecord(r.id, r.patientId, r.cid, r.hash);
+      await ledger.registerRecord(r.patientId, r.id, r.cid, r.hash);
       console.log(`  + record ${r.id} registered`);
       written++;
     } else if (anchored.cid !== r.cid || anchored.hash !== r.hash || anchored.patientId !== String(r.patientId)) {
@@ -40,11 +41,11 @@ async function main() {
   console.log(`Checking ${permissions.length} permissions`);
   for (const p of permissions) {
     const label = `permission ${p.id} (record ${p.recordId}, doctor ${p.doctorId})`;
-    let consent = await ledger.getConsent(p.recordId, p.doctorId);
+    let consent = await ledger.getConsent(p.patientId, p.recordId, p.doctorId);
 
     if (!consent) {
-      await ledger.requestAccess(p.recordId, p.doctorId);
-      consent = await ledger.getConsent(p.recordId, p.doctorId);
+      await ledger.requestAccess(p.doctorId, p.recordId);
+      consent = await ledger.getConsent(p.patientId, p.recordId, p.doctorId);
       console.log(`  + ${label} requested`);
       written++;
     }
@@ -53,7 +54,7 @@ async function main() {
 
     if (p.status === PermissionStatus.APPROVED && onChain !== "GRANTED") {
       if (onChain === "PENDING") {
-        await ledger.grantAccess(p.recordId, p.doctorId, p.patientId);
+        await ledger.grantAccess(p.patientId, p.recordId, p.doctorId);
         console.log(`  + ${label} granted`);
         written++;
       } else {
@@ -61,11 +62,11 @@ async function main() {
         conflicts.push(`${label}: APPROVED in Postgres but ${onChain} on the ledger`);
       }
     } else if (p.status === PermissionStatus.DENIED && onChain === "PENDING") {
-      await ledger.denyAccess(p.recordId, p.doctorId, p.patientId);
+      await ledger.denyAccess(p.patientId, p.recordId, p.doctorId);
       console.log(`  + ${label} denied`);
       written++;
     } else if (p.status === PermissionStatus.DENIED && onChain === "GRANTED") {
-      await ledger.revokeAccess(p.recordId, p.doctorId, p.patientId);
+      await ledger.revokeAccess(p.patientId, p.recordId, p.doctorId);
       console.log(`  + ${label} revoked`);
       written++;
     } else if (p.status === PermissionStatus.PENDING && onChain !== "PENDING") {

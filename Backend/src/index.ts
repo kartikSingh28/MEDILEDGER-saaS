@@ -5,6 +5,7 @@ import "dotenv/config";
 import userRouter from "./routes/userRoute";
 import recordRouter from "./routes/record.routes";
 import permissionRouter from "./routes/permission.routes";
+import hospitalRouter from "./routes/hospital.routes";
 
 const app = express(); // ✅ FIRST create app
 
@@ -22,6 +23,7 @@ app.get("/", (_req, res) => {
 app.use("/auth", userRouter);
 app.use("/records", recordRouter);
 app.use("/permissions", permissionRouter);
+app.use("/hospitals", hospitalRouter);
 
 const PORT = 5000;
 

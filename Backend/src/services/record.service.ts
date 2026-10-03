@@ -34,7 +34,7 @@ export async function uploadRecord(
 
   // Anchor CID + hash on the ledger; roll back the DB row if that fails
   try {
-    await ledger.registerRecord(record.id, patientId, cid, hash);
+    await ledger.registerRecord(patientId, record.id, cid, hash);
   } catch (err) {
     await prisma.record.delete({ where: { id: record.id } });
     throw err;
@@ -45,8 +45,7 @@ export async function uploadRecord(
 
 export async function downloadRecord(
   recordId: number,
-  userId: number,
-  role: string
+  userId: number
 ) {
   const record = await prisma.record.findUnique({
     where: { id: recordId }
@@ -56,8 +55,8 @@ export async function downloadRecord(
     throw new Error("Record not found");
   }
 
-  // Ledger re-checks consent and logs the access; throws if access is denied
-  const anchored = await ledger.logAccess(recordId, userId, role);
+  // Signed by the downloader: the ledger re-checks their consent and logs the access
+  const anchored = await ledger.logAccess(userId, recordId);
 
   if (anchored && (anchored.cid !== record.cid || anchored.hash !== record.hash)) {
     throw new Error("Record metadata does not match the ledger");
@@ -85,6 +84,6 @@ export async function downloadRecord(
   };
 }
 
-export async function getAuditTrail(recordId: number) {
-  return ledger.getAuditTrail(recordId);
+export async function getAuditTrail(patientId: number, recordId: number) {
+  return ledger.getAuditTrail(patientId, recordId);
 }

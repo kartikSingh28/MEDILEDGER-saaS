@@ -114,8 +114,7 @@ recordRouter.get(
       // If passed checks → decrypt & send
       const { buffer, filename } = await downloadRecord(
         recordId,
-        user.userId,
-        user.role
+        user.userId
       );
 
       res.setHeader(
@@ -151,7 +150,7 @@ recordRouter.get(
         return res.status(404).json({ message: "Record not found" });
       }
 
-      const trail = await getAuditTrail(recordId);
+      const trail = await getAuditTrail(userId, recordId);
 
       if (!trail) {
         return res.status(503).json({ message: "Blockchain ledger is not enabled" });
@@ -172,13 +171,21 @@ recordRouter.get(
       });
       const nameOf = new Map(users.map((u) => [String(u.id), u.name]));
 
+      // Each Fabric organization (MSP) is a hospital
+      const hospitals = await prisma.hospital.findMany({ select: { mspId: true, name: true } });
+      const hospitalOf = new Map(hospitals.map((h) => [h.mspId, h.name]));
+
       res.json({
         recordId,
         filename: record.filename,
         trail: trail.map((entry) => ({
           ...entry,
           actorName: nameOf.get(entry.actorId) ?? null,
+          actorHospital: hospitalOf.get(entry.actorMsp) ?? entry.actorMsp,
           doctorName: isConsentAction(entry.action) ? nameOf.get(entry.targetId) ?? null : null,
+          doctorHospital: isConsentAction(entry.action)
+            ? hospitalOf.get(entry.targetMsp) ?? entry.targetMsp
+            : null,
         })),
       });
     } catch (e: any) {

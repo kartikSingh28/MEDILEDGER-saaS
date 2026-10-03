@@ -21,6 +21,10 @@ export class MedicalRecord {
     @Property()
     public patientId: string = "";
 
+    // Hospital (Fabric MSP) whose CA issued the patient's identity
+    @Property()
+    public patientMsp: string = "";
+
     @Property()
     public cid: string = "";
 
@@ -46,7 +50,13 @@ export class Consent {
     public patientId: string = "";
 
     @Property()
+    public patientMsp: string = "";
+
+    @Property()
     public doctorId: string = "";
+
+    @Property()
+    public doctorMsp: string = "";
 
     @Property()
     public status: ConsentStatus = "PENDING";
@@ -77,6 +87,17 @@ export class AuditEntry {
 
     @Property()
     public targetId: string = "";
+
+    // For consent actions the target is a doctor; this is their hospital
+    @Property()
+    public targetMsp: string = "";
+
+    // MSP and X.509 identity (subject + issuer) of the certificate that signed the transaction
+    @Property()
+    public actorMsp: string = "";
+
+    @Property()
+    public actorIdentity: string = "";
 
     @Property()
     public timestamp: string = "";

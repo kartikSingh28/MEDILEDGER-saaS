@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Lock, Mail, User, AlertCircle, CheckCircle, ArrowRight } from "lucide-react";
+import { Shield, Lock, Mail, User, AlertCircle, CheckCircle, ArrowRight, Building2 } from "lucide-react";
+
+interface Hospital {
+  id: number;
+  name: string;
+}
 
 export function Signup() {
   const navigate = useNavigate();
@@ -9,8 +14,18 @@ export function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"PATIENT" | "DOCTOR">("PATIENT");
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [hospitalId, setHospitalId] = useState<number | "">("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Each hospital is its own blockchain organization; the user's identity is issued by it
+  useEffect(() => {
+    fetch("http://localhost:5000/hospitals")
+      .then((res) => res.json())
+      .then((data) => setHospitals(data.hospitals ?? []))
+      .catch(() => setError("Could not load hospitals"));
+  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +38,7 @@ export function Signup() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ name, email, password, role })
+        body: JSON.stringify({ name, email, password, role, hospitalId })
       });
 
       const data = await res.json();
@@ -169,6 +184,32 @@ export function Signup() {
                     Doctor
                   </p>
                 </button>
+              </div>
+            </div>
+
+            {/* Hospital Selection */}
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2" htmlFor="hospital">
+                Hospital
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
+                <select
+                  id="hospital"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={hospitalId}
+                  onChange={(e) => setHospitalId(e.target.value ? Number(e.target.value) : "")}
+                  required
+                >
+                  <option value="" disabled>
+                    Select your hospital
+                  </option>
+                  {hospitals.map((h) => (
+                    <option key={h.id} value={h.id} className="bg-gray-800">
+                      {h.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

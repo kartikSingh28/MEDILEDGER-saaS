@@ -34,7 +34,8 @@ next_sequence() {
 }
 
 up() {
-  (cd "$TEST_NETWORK" && ./network.sh up createChannel -c "$CHANNEL_NAME")
+  # -ca: run a Fabric CA per org so each MediLedger user gets their own certificate
+  (cd "$TEST_NETWORK" && ./network.sh up createChannel -ca -c "$CHANNEL_NAME")
   deploy
 }
 
@@ -52,21 +53,26 @@ deploy() {
   creds
 }
 
+# Copies only public TLS roots for each hospital (org); user identities are
+# issued by each hospital's CA at signup
 creds() {
-  local org="$TEST_NETWORK/organizations/peerOrganizations/org1.example.com"
-  local user="$org/users/User1@org1.example.com/msp"
-
-  if [ ! -d "$user" ]; then
-    echo "Org1 credentials not found; is the network up?" >&2
-    exit 1
-  fi
-
   rm -rf "$CRYPTO_OUT"
   mkdir -p "$CRYPTO_OUT"
-  cp "$user"/signcerts/*.pem "$CRYPTO_OUT/cert.pem"
-  cp "$user"/keystore/* "$CRYPTO_OUT/key.pem"
-  cp "$org/peers/peer0.org1.example.com/tls/ca.crt" "$CRYPTO_OUT/tls-ca.crt"
-  echo "Copied Org1 User1 credentials to $CRYPTO_OUT"
+
+  for org in org1 org2; do
+    local peer_tls="$TEST_NETWORK/organizations/peerOrganizations/$org.example.com/peers/peer0.$org.example.com/tls/ca.crt"
+    local ca_cert="$TEST_NETWORK/organizations/fabric-ca/$org/ca-cert.pem"
+
+    if [ ! -f "$ca_cert" ]; then
+      echo "$org CA certificate not found; is the network up with a CA (./network.sh up)?" >&2
+      exit 1
+    fi
+
+    cp "$peer_tls" "$CRYPTO_OUT/$org-peer-tls.crt"
+    cp "$ca_cert" "$CRYPTO_OUT/$org-ca.pem"
+  done
+
+  echo "Copied peer and CA TLS certificates for org1 and org2 to $CRYPTO_OUT"
 }
 
 down() {

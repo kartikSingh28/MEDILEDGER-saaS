@@ -4,7 +4,9 @@ export const signupSchema=z.object({
     email:z.string().email(),
     name:z.string().min(2).max(50).trim(),
     password:z.string().min(6).max(100),
-    role: z.enum(["PATIENT", "DOCTOR", "ADMIN"])
+    // ADMIN accounts are created only via `npm run create-admin`
+    role: z.enum(["PATIENT", "DOCTOR"]),
+    hospitalId: z.number().int().positive()
 
 });
 

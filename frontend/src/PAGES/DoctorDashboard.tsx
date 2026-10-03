@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { FileText, Shield, Download, Activity } from "lucide-react";
+import { FileText, Shield, Download, Activity, Building2 } from "lucide-react";
 
 interface Request {
   id: number;
@@ -10,6 +10,7 @@ interface Request {
   record: {
     id: number;
     filename: string;
+    patient?: { hospital?: { name: string } };
   };
 }
 
@@ -18,6 +19,7 @@ export function DoctorDashboard() {
   const [recordId, setRecordId] = useState("");
   const [message, setMessage] = useState("");
   const token = localStorage.getItem("token");
+  const hospitalName = localStorage.getItem("hospital") || "";
 
   const fetchRequests = useCallback(async () => {
     const res = await fetch("http://localhost:5000/permissions/mine", {
@@ -85,7 +87,15 @@ export function DoctorDashboard() {
 
         <div className="flex items-center space-x-3 mb-8">
           <Shield className="text-blue-400" size={32} />
-          <h1 className="text-3xl font-bold text-white">Doctor Dashboard</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Doctor Dashboard</h1>
+            {hospitalName && (
+              <p className="text-gray-400 text-sm flex items-center mt-1">
+                <Building2 size={14} className="mr-1" />
+                {hospitalName}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Request Access Card */}
@@ -135,6 +145,17 @@ export function DoctorDashboard() {
                       <p className="text-white font-medium">
                         {req.record?.filename}
                       </p>
+                      {req.record?.patient?.hospital && (
+                        <p className="text-blue-300 text-xs flex items-center mt-1">
+                          <Building2 size={12} className="mr-1" />
+                          Patient at {req.record.patient.hospital.name}
+                          {hospitalName && req.record.patient.hospital.name !== hospitalName && (
+                            <span className="ml-2 bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
+                              Cross-hospital
+                            </span>
+                          )}
+                        </p>
+                      )}
                       <p className="text-gray-400 text-sm">
                         Status: {req.status}
                       </p>

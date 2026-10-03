@@ -56,7 +56,7 @@ PermissionRouter.post(
       });
 
       try {
-        await ledger.requestAccess(record.id, doctorId);
+        await ledger.requestAccess(doctorId, record.id);
       } catch (err) {
         await prisma.permission.delete({ where: { id: permission.id } });
         throw err;
@@ -83,7 +83,12 @@ PermissionRouter.get(
       const requests = await prisma.permission.findMany({
         where: { doctorId },
         include: {
-          record: true,
+          // Which hospital the record belongs to (cross-hospital requests)
+          record: {
+            include: {
+              patient: { select: { hospital: { select: { name: true } } } },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
       });
@@ -106,7 +111,10 @@ PermissionRouter.get(
       const filtered = await prisma.permission.findMany({
         where: { patientId },
         include: {
-          doctor: true,
+          // Never send the whole user row: it includes the password hash
+          doctor: {
+            select: { id: true, name: true, hospital: { select: { name: true } } },
+          },
           record: true,
         },
       });
@@ -139,7 +147,7 @@ PermissionRouter.post(
       }
 
       // Ledger first: Postgres must never show consent the chain doesn't have
-      await ledger.grantAccess(permission.recordId, permission.doctorId, patientId);
+      await ledger.grantAccess(patientId, permission.recordId, permission.doctorId);
 
       const updated = await prisma.permission.update({
         where: { id: permissionId },
@@ -182,9 +190,9 @@ PermissionRouter.post(
 
       // Denying an approved request revokes it on the ledger
       if (permission.status === PermissionStatus.APPROVED) {
-        await ledger.revokeAccess(permission.recordId, permission.doctorId, patientId);
+        await ledger.revokeAccess(patientId, permission.recordId, permission.doctorId);
       } else {
-        await ledger.denyAccess(permission.recordId, permission.doctorId, patientId);
+        await ledger.denyAccess(patientId, permission.recordId, permission.doctorId);
       }
 
       const updated = await prisma.permission.update({

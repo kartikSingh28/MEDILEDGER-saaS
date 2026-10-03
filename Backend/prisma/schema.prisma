@@ -24,11 +24,40 @@ model User {
   email     String   @unique
   passwordHash  String
   role      Role
+  hospitalId Int
   createdAt DateTime @default(now())
+
+  hospital           Hospital @relation(fields: [hospitalId], references: [id])
 
   records            Record[]
   doctorPermissions  Permission[] @relation("DoctorPermissions")
   patientPermissions Permission[] @relation("PatientPermissions")
+  fabricIdentity     FabricIdentity?
+}
+
+// A hospital is a Fabric organization with its own peer and CA.
+// mspId links it to the Fabric connection settings in fabric.orgs.ts.
+model Hospital {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  mspId     String   @unique
+  createdAt DateTime @default(now())
+
+  users User[]
+}
+
+// Each user's X.509 identity, issued by their hospital's Fabric CA.
+// Every ledger transaction for that user is signed with this key.
+model FabricIdentity {
+  userId        Int      @id
+  enrollmentId  String   @unique
+  mspId         String
+  certificate   String
+  privateKey    String   // AES-256-GCM encrypted with WALLET_SECRET
+  caFingerprint String   // SHA-256 of the issuing CA cert; re-enroll when the CA changes
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Record {

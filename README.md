@@ -153,12 +153,12 @@ cd MEDILEDGER-saaS
 
 ### 2. Configure the backend
 ```bash
-cp Backend/.env.example Backend/.env   # then set JWT_SECRET and FILE_SECRET
+cp Backend/.env.example Backend/.env   # then set JWT_SECRET, FILE_SECRET and WALLET_SECRET
 ```
 
 ### 3. Start the Fabric network (from WSL)
-Starts the test network, creates the `mediledger` channel, deploys the consent
-chaincode and copies Org1 credentials into `Backend/fabric/crypto`.
+Starts the test network with a Fabric CA per org, creates the `mediledger` channel,
+deploys the consent chaincode and copies the peer/CA TLS certificates into `Backend/fabric/crypto`.
 ```bash
 ./blockchain/network/network.sh up
 ```
@@ -182,11 +182,13 @@ npm run dev                      # http://localhost:5173
 |------|---------|
 | Redeploy chaincode after changes | `./blockchain/network/network.sh deploy` (WSL) |
 | Backfill ledger from Postgres | `docker compose exec backend npm run fabric:sync` |
+| Create an admin (public signup can't) | `docker compose exec backend npm run create-admin -- <email> <name> <password> <hospitalId>` |
 | Stop app stack | `docker compose down` (add `-v` to wipe DB + IPFS data) |
 | Stop Fabric | `./blockchain/network/network.sh down` (wipes the ledger) |
 
 > After `network.sh down` + `up` the ledger is empty while Postgres keeps its data.
-> Run `npm run fabric:sync` to re-anchor existing records and consents.
+> Run `npm run fabric:sync` to re-anchor existing records and consents. Users are
+> re-issued identities from the new CA automatically.
 
 > **Windows antivirus:** Avast/AVG HTTPS scanning intercepts TLS to the Fabric peer
 > from Windows, so run the backend in Docker (as above) rather than with `npm run dev`
@@ -208,8 +210,31 @@ Chaincode: `blockchain/chaincode/consent-contract` (TypeScript, Fabric 2.5)
 Downloads take the CID and hash from the ledger, so editing Postgres
 (e.g. flipping a permission to approved) cannot unlock a file.
 
-The backend signs all transactions with one Org1 identity and passes app user
-IDs as arguments; the chaincode enforces the consent rules on those IDs.
+### Multiple hospitals
+Each hospital is its own Fabric organization with its own peer and Certificate
+Authority. The test network runs two: **City General Hospital** (`Org1MSP`) and
+**Metro Care Hospital** (`Org2MSP`), seeded in the `Hospital` table.
+
+- Users pick their hospital at signup; their certificate is issued by that hospital's CA
+  and their transactions go through that hospital's peer.
+- Patients can share records with doctors at **other** hospitals; the UI and audit
+  trail show each party's hospital.
+- Every transaction must be endorsed by both hospitals' peers, so no single
+  hospital can write to the ledger alone.
+- Identity on the ledger is **(hospital, user ID)**: a certificate issued by one
+  hospital's CA can't act as another hospital's user, even with a forged user ID.
+
+### Per-user blockchain identities
+Every user gets their own X.509 certificate from their hospital's **Fabric CA** at signup,
+with their user ID and role embedded as CA-signed certificate attributes.
+Each transaction is signed with that user's private key, and the chaincode reads
+who is acting **from the signing certificate**, never from parameters. A doctor's
+key cannot approve consent, and one patient's key cannot change another's record.
+Every audit entry stores the signer's certificate identity.
+
+Keys are custodial: stored in Postgres encrypted with AES-256-GCM (`WALLET_SECRET`)
+and used by the backend on the user's behalf. Moving signing into the browser so
+keys never leave the user's device is a possible next step.
 
 ---
 

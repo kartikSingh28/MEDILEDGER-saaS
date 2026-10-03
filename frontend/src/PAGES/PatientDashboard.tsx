@@ -18,7 +18,8 @@ import {
   UserX,
   ShieldOff,
   Send,
-  Hash
+  Hash,
+  Building2
 } from "lucide-react";
 interface Record {
   id: number;
@@ -34,6 +35,7 @@ interface Record {
 interface AccessLog {
   id: number;
   doctorName: string;
+  doctorHospital: string;
   accessedAt: string;
   recordName: string;
   status: "approved" | "pending" | "denied";
@@ -43,7 +45,7 @@ interface PermissionResponse {
   id: number;
   status: "APPROVED" | "PENDING" | "DENIED";
   createdAt: string;
-  doctor?: { name: string };
+  doctor?: { name: string; hospital?: { name: string } };
   record?: { filename: string };
 }
 
@@ -60,11 +62,19 @@ interface AuditEntry {
   actorId: string;
   actorRole: string;
   actorName: string | null;
+  actorHospital: string;
   doctorName: string | null;
+  doctorHospital: string | null;
   targetId: string;
+  actorMsp: string;
+  actorIdentity: string;
   timestamp: string;
   txId: string;
 }
+
+// actorIdentity looks like "x509::/OU=client/.../CN=mediledger-user-12::/C=US/.../CN=ca.org1.example.com";
+// the first CN is the signer's enrollment ID
+const signerName = (identity: string) => identity.match(/CN=([^/:]+)/)?.[1] ?? "unknown";
 
 const errorMessage = (err: unknown) =>
   err instanceof Error ? err.message : "Something went wrong";
@@ -78,6 +88,7 @@ export function PatientDashboard() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "records" | "access" | "security">("upload");
   const [userName] = useState(localStorage.getItem("name") || "");
+  const [hospitalName] = useState(localStorage.getItem("hospital") || "");
   const [auditRecord, setAuditRecord] = useState<Record | null>(null);
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
@@ -147,6 +158,7 @@ const fetchAccessLogs = async () => {
         data.requests.map((req: PermissionResponse) => ({
           id: req.id,
           doctorName: req.doctor?.name || "Doctor",
+          doctorHospital: req.doctor?.hospital?.name || "",
           accessedAt: req.createdAt,
           recordName: req.record?.filename,
           status: req.status.toLowerCase() as AccessLog["status"]
@@ -315,6 +327,7 @@ const openAudit = async (record: Record) => {
   localStorage.removeItem("token");
   localStorage.removeItem("role");
   localStorage.removeItem("name");
+  localStorage.removeItem("hospital");
   window.location.href = "/login";
 };
 
@@ -334,7 +347,9 @@ const openAudit = async (record: Record) => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <p className="text-sm text-white font-medium">{userName}</p>
-              <p className="text-xs text-gray-400">Patient Account</p>
+              <p className="text-xs text-gray-400">
+                {hospitalName ? `Patient · ${hospitalName}` : "Patient Account"}
+              </p>
             </div>
             <button
               onClick={handleLogout}
@@ -608,6 +623,17 @@ const openAudit = async (record: Record) => {
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-white font-medium mb-1">{log.doctorName}</h3>
+                          {log.doctorHospital && (
+                            <p className="text-blue-300 text-xs mb-1 flex items-center">
+                              <Building2 size={12} className="mr-1" />
+                              {log.doctorHospital}
+                              {hospitalName && log.doctorHospital !== hospitalName && (
+                                <span className="ml-2 bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">
+                                  Other hospital
+                                </span>
+                              )}
+                            </p>
+                          )}
                           <p className="text-gray-400 text-sm">
                             {log.status === "pending" ? "Requesting access to" : "Access to"}: {log.recordName}
                           </p>
@@ -830,8 +856,8 @@ const auditStyles: { [K in AuditAction]: { icon: React.ReactNode; color: string 
 };
 
 function describeAudit(entry: AuditEntry): string {
-  const doctor = entry.doctorName || `Doctor #${entry.targetId}`;
-  const actor = entry.actorName || `User #${entry.actorId}`;
+  const doctor = `${entry.doctorName || `Doctor #${entry.targetId}`} (${entry.doctorHospital})`;
+  const actor = `${entry.actorName || `User #${entry.actorId}`} (${entry.actorHospital})`;
 
   switch (entry.action) {
     case "RECORD_REGISTERED":
@@ -941,6 +967,13 @@ function AuditTrailModal({ record, entries, loading, error, onClose, formatDate 
                   >
                     <Hash size={12} className="mr-1" />
                     tx {entry.txId.substring(0, 16)}...
+                  </p>
+                  <p
+                    className="text-gray-500 text-xs mt-1 font-mono flex items-center"
+                    title={entry.actorIdentity}
+                  >
+                    <Lock size={12} className="mr-1" />
+                    Signed by {signerName(entry.actorIdentity)} · {entry.actorHospital} ({entry.actorMsp})
                   </p>
                 </li>
               ))}
