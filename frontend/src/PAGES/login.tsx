@@ -33,6 +33,7 @@ export function Login() {
       // Save token + role
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.user.role);
+      localStorage.setItem("name", data.user.name);
 
       // Role-based redirect
       if (data.user.role === "PATIENT") {

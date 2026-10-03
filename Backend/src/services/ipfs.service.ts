@@ -16,7 +16,7 @@ export async function uploadToIPFS(buffer: Buffer) {
 
 export async function downloadFromIPFS(cid: string) {
   try {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
 
     for await (const chunk of client.cat(cid)) {
       chunks.push(chunk);

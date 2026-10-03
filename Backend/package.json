@@ -2,17 +2,20 @@
   "name": "mediledger-backend",
   "version": "1.0.0",
   "description": "Secure Patient Data Management Backend - Express + TypeScript + Prisma + PostgreSQL",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "fabric:sync": "tsx src/scripts/syncLedger.ts"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.14.5",
+    "@hyperledger/fabric-gateway": "^1.11.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "bcrypt": "^5.1.1",

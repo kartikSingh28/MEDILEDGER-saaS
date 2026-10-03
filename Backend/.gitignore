@@ -24,3 +24,6 @@ Thumbs.db
 /src/generated/prisma
 uploads/
 
+
+# Fabric credentials (copied by blockchain/network/network.sh)
+fabric/crypto/

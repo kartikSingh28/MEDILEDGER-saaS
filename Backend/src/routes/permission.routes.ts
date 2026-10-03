@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "../../middleware/AuthMiddleware";
 
 import { PermissionStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import * as ledger from "../services/fabric.service";
 
 
 const PermissionRouter = Router();
@@ -54,6 +55,13 @@ PermissionRouter.post(
         },
       });
 
+      try {
+        await ledger.requestAccess(record.id, doctorId);
+      } catch (err) {
+        await prisma.permission.delete({ where: { id: permission.id } });
+        throw err;
+      }
+
       res.status(201).json({
         message: "Access request sent successfully",
         permission,
@@ -95,11 +103,6 @@ PermissionRouter.get(
     try {
       const patientId = Number((req as any).user.userId);
 
-      console.log("🔵 Logged in patient:", patientId);
-
-      const allPermissions = await prisma.permission.findMany();
-      console.log("🔴 ALL PERMISSIONS:", allPermissions);
-
       const filtered = await prisma.permission.findMany({
         where: { patientId },
         include: {
@@ -107,8 +110,6 @@ PermissionRouter.get(
           record: true,
         },
       });
-
-      console.log("🟢 FILTERED PERMISSIONS:", filtered);
 
       res.json({ requests: filtered });
     } catch (error: any) {
@@ -132,6 +133,13 @@ PermissionRouter.post(
       if (!permission || permission.patientId !== patientId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
+
+      if (permission.status === PermissionStatus.APPROVED) {
+        return res.status(400).json({ message: "Access already approved" });
+      }
+
+      // Ledger first: Postgres must never show consent the chain doesn't have
+      await ledger.grantAccess(permission.recordId, permission.doctorId, patientId);
 
       const updated = await prisma.permission.update({
         where: { id: permissionId },
@@ -166,6 +174,17 @@ PermissionRouter.post(
 
       if (!permission || permission.patientId !== patientId) {
         return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      if (permission.status === PermissionStatus.DENIED) {
+        return res.status(400).json({ message: "Access already denied" });
+      }
+
+      // Denying an approved request revokes it on the ledger
+      if (permission.status === PermissionStatus.APPROVED) {
+        await ledger.revokeAccess(permission.recordId, permission.doctorId, patientId);
+      } else {
+        await ledger.denyAccess(permission.recordId, permission.doctorId, patientId);
       }
 
       const updated = await prisma.permission.update({

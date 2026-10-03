@@ -1,0 +1,77 @@
+
+name: mediledger
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mediledger}
+      POSTGRES_DB: mediledger
+    ports:
+      # 5432 belongs to the local PostgreSQL install; use 5434 for Prisma Studio / pgAdmin
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mediledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ipfs:
+    image: ipfs/kubo:v0.43.1
+    volumes:
+      - ipfs-data:/data/ipfs
+    healthcheck:
+      test: ["CMD", "ipfs", "id"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./Backend
+    env_file: ./Backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-mediledger}@postgres:5432/mediledger
+      IPFS_NODE_URL: http://ipfs:5001
+      FABRIC_ENABLED: "true"
+      FABRIC_PEER_ENDPOINT: peer0.org1.example.com:7051
+      FABRIC_CRYPTO_PATH: /app/fabric/crypto
+    volumes:
+      # Written by blockchain/network/network.sh
+      - ./Backend/fabric/crypto:/app/fabric/crypto:ro
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ipfs:
+        condition: service_healthy
+    networks:
+      - default
+      - fabric
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./Backend/src
+          target: /app/src
+        - action: sync+restart
+          path: ./Backend/middleware
+          target: /app/middleware
+        - action: sync+restart
+          path: ./Backend/config
+          target: /app/config
+        - action: rebuild
+          path: ./Backend/package.json
+        - action: rebuild
+          path: ./Backend/prisma
+
+networks:
+  fabric:
+    name: fabric_test
+    external: true
+
+volumes:
+  postgres-data:
+  ipfs-data:

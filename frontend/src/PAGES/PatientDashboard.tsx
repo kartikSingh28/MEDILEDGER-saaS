@@ -40,7 +40,7 @@ export function PatientDashboard() {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "records" | "access" | "security">("upload");
-  const [userName, setUserName] = useState("");
+  const [userName] = useState(localStorage.getItem("name") || "");
   const showMessage = (
   text: string,
   type: "success" | "error" | "info"
@@ -238,6 +238,8 @@ const handleDeny = async (id: number) => {
   };
   const handleLogout = () => {
   localStorage.removeItem("token");
+  localStorage.removeItem("role");
+  localStorage.removeItem("name");
   window.location.href = "/login";
 };
 

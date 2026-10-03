@@ -2,7 +2,8 @@ import { prisma } from "../lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { SignInInput, SignUpInput } from "../src/Schemas/auth.schema";
+import { Prisma } from "@prisma/client";
+import { SignInInput, SignUpInput } from "../Schemas/AuthSchema";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
