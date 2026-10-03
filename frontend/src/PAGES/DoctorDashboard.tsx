@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileText, Shield, Download, Activity } from "lucide-react";
 
 interface Request {
@@ -19,6 +19,15 @@ export function DoctorDashboard() {
   const [message, setMessage] = useState("");
   const token = localStorage.getItem("token");
 
+  const fetchRequests = useCallback(async () => {
+    const res = await fetch("http://localhost:5000/permissions/mine", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+    if (res.ok) setRequests(data.requests);
+  }, [token]);
+
   useEffect(() => {
     fetchRequests();
 
@@ -27,16 +36,7 @@ export function DoctorDashboard() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, []);
-
-  const fetchRequests = async () => {
-    const res = await fetch("http://localhost:5000/permissions/mine", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const data = await res.json();
-    if (res.ok) setRequests(data.requests);
-  };
+  }, [fetchRequests]);
 
   const requestAccess = async () => {
     if (!recordId) return;
@@ -56,7 +56,7 @@ export function DoctorDashboard() {
       setRecordId("");
       fetchRequests();
     } else {
-      setMessage(data.message || "Error");
+      setMessage(data.message || data.error || "Error");
     }
   };
 
@@ -66,7 +66,8 @@ export function DoctorDashboard() {
     });
 
     if (!res.ok) {
-      alert("Access not approved yet");
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || data.message || "Access not approved yet");
       return;
     }
 

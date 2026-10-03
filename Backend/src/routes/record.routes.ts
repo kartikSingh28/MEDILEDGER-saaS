@@ -157,7 +157,30 @@ recordRouter.get(
         return res.status(503).json({ message: "Blockchain ledger is not enabled" });
       }
 
-      res.json({ recordId, trail });
+      // Ledger stores user IDs only; attach names for display.
+      // For consent actions the target is the doctor.
+      const isConsentAction = (action: string) => action.startsWith("ACCESS_");
+      const userIds = new Set<number>();
+      for (const entry of trail) {
+        userIds.add(Number(entry.actorId));
+        if (isConsentAction(entry.action)) userIds.add(Number(entry.targetId));
+      }
+
+      const users = await prisma.user.findMany({
+        where: { id: { in: [...userIds] } },
+        select: { id: true, name: true },
+      });
+      const nameOf = new Map(users.map((u) => [String(u.id), u.name]));
+
+      res.json({
+        recordId,
+        filename: record.filename,
+        trail: trail.map((entry) => ({
+          ...entry,
+          actorName: nameOf.get(entry.actorId) ?? null,
+          doctorName: isConsentAction(entry.action) ? nameOf.get(entry.targetId) ?? null : null,
+        })),
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

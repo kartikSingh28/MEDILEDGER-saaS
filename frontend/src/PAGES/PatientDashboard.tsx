@@ -10,8 +10,15 @@ import {
   AlertCircle,
   Lock,
   Eye,
-  Share2,
-  LogOut
+  History,
+  LogOut,
+  X,
+  Link2,
+  UserCheck,
+  UserX,
+  ShieldOff,
+  Send,
+  Hash
 } from "lucide-react";
 interface Record {
   id: number;
@@ -32,6 +39,36 @@ interface AccessLog {
   status: "approved" | "pending" | "denied";
 }
 
+interface PermissionResponse {
+  id: number;
+  status: "APPROVED" | "PENDING" | "DENIED";
+  createdAt: string;
+  doctor?: { name: string };
+  record?: { filename: string };
+}
+
+type AuditAction =
+  | "RECORD_REGISTERED"
+  | "ACCESS_REQUESTED"
+  | "ACCESS_GRANTED"
+  | "ACCESS_DENIED"
+  | "ACCESS_REVOKED"
+  | "RECORD_ACCESSED";
+
+interface AuditEntry {
+  action: AuditAction;
+  actorId: string;
+  actorRole: string;
+  actorName: string | null;
+  doctorName: string | null;
+  targetId: string;
+  timestamp: string;
+  txId: string;
+}
+
+const errorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : "Something went wrong";
+
 export function PatientDashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
@@ -41,6 +78,10 @@ export function PatientDashboard() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "records" | "access" | "security">("upload");
   const [userName] = useState(localStorage.getItem("name") || "");
+  const [auditRecord, setAuditRecord] = useState<Record | null>(null);
+  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState("");
   const showMessage = (
   text: string,
   type: "success" | "error" | "info"
@@ -86,7 +127,7 @@ const fetchRecords = async () => {
       console.log("Records from backend:", data);
       setRecords(data);   
     }
-  } catch (err) {
+  } catch {
     console.error("Failed to fetch records");
   }
 };
@@ -103,16 +144,16 @@ const fetchAccessLogs = async () => {
 
     if (res.ok) {
       setAccessLogs(
-        data.requests.map((req: any) => ({
+        data.requests.map((req: PermissionResponse) => ({
           id: req.id,
           doctorName: req.doctor?.name || "Doctor",
           accessedAt: req.createdAt,
           recordName: req.record?.filename,
-          status: req.status.toLowerCase()
+          status: req.status.toLowerCase() as AccessLog["status"]
         }))
       );
     }
-  } catch (err) {
+  } catch {
     console.error("Failed to fetch access logs");
   }
 };
@@ -145,8 +186,8 @@ const fetchAccessLogs = async () => {
       showMessage("File encrypted and uploaded to IPFS successfully ", "success");
       setFile(null);
       fetchRecords(); // Refresh records list
-    } catch (err: any) {
-      showMessage(err.message, "error");
+    } catch (err) {
+      showMessage(errorMessage(err), "error");
     } finally {
       setLoading(false);
     }
@@ -179,8 +220,8 @@ const fetchAccessLogs = async () => {
     document.body.removeChild(a);
 
     showMessage("File decrypted and downloaded ✅", "success");
-  } catch (err: any) {
-    showMessage(err.message, "error");
+  } catch (err) {
+    showMessage(errorMessage(err), "error");
   } finally {
     setLoading(false);
   }
@@ -197,15 +238,19 @@ const handleApprove = async (id: number) => {
       }
     );
 
-    if (res.ok) {
-      showMessage("Access approved successfully", "success");
-      fetchAccessLogs();
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Failed to approve request");
     }
+
+    showMessage("Access approved and recorded on the blockchain", "success");
+    fetchAccessLogs();
   } catch (err) {
-    showMessage("Failed to approve request", "error");
+    showMessage(errorMessage(err), "error");
   }
 };
-const handleDeny = async (id: number) => {
+// Denying an approved request revokes it (backend + ledger handle both)
+const handleDeny = async (id: number, revoking = false) => {
   try {
     const res = await fetch(
       `http://localhost:5000/permissions/deny/${id}`,
@@ -217,12 +262,42 @@ const handleDeny = async (id: number) => {
       }
     );
 
-    if (res.ok) {
-      showMessage("Access denied", "success");
-      fetchAccessLogs();
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Failed to deny request");
     }
+
+    showMessage(revoking ? "Access revoked" : "Access denied", "success");
+    fetchAccessLogs();
   } catch (err) {
-    showMessage("Failed to deny request", "error");
+    showMessage(errorMessage(err), "error");
+  }
+};
+
+const openAudit = async (record: Record) => {
+  setAuditRecord(record);
+  setAuditTrail([]);
+  setAuditError("");
+  setAuditLoading(true);
+
+  try {
+    const res = await fetch(`http://localhost:5000/records/${record.id}/audit`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Failed to load audit trail");
+    }
+
+    // Newest first
+    setAuditTrail([...data.trail].reverse());
+  } catch (err) {
+    setAuditError(errorMessage(err));
+  } finally {
+    setAuditLoading(false);
   }
 };
 
@@ -493,10 +568,12 @@ const handleDeny = async (id: number) => {
                             <span>Download</span>
                           </button>
                           <button
+                            onClick={() => openAudit(record)}
                             className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm flex items-center space-x-2 transition-colors"
-                            title="Share with doctor"
+                            title="Blockchain audit trail"
                           >
-                            <Share2 size={16} />
+                            <History size={16} />
+                            <span>History</span>
                           </button>
                         </div>
                       </div>
@@ -532,7 +609,7 @@ const handleDeny = async (id: number) => {
                         <div>
                           <h3 className="text-white font-medium mb-1">{log.doctorName}</h3>
                           <p className="text-gray-400 text-sm">
-                            Requesting access to: {log.recordName}
+                            {log.status === "pending" ? "Requesting access to" : "Access to"}: {log.recordName}
                           </p>
                           <p className="text-gray-500 text-xs mt-1">
                             {formatDate(log.accessedAt)}
@@ -552,6 +629,24 @@ const handleDeny = async (id: number) => {
                               Deny
                             </button>
                           </div>
+                        )}
+                        {log.status === "approved" && (
+                          <div className="flex items-center space-x-3">
+                            <span className="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full">
+                              Approved
+                            </span>
+                            <button
+                              onClick={() => handleDeny(log.id, true)}
+                              className="bg-gray-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        )}
+                        {log.status === "denied" && (
+                          <span className="bg-red-500/20 text-red-400 text-xs px-3 py-1 rounded-full">
+                            Denied
+                          </span>
                         )}
                       </div>
                     </div>
@@ -577,12 +672,12 @@ const handleDeny = async (id: number) => {
                   status="active"
                   icon={<Lock />}
                 />
-              <SecurityFeature
-  title="Blockchain Verification"
-  description="Blockchain Layer (Planned - Phase 2)"
-  status="active"
-  icon={<Shield />}
-/>
+                <SecurityFeature
+                  title="Blockchain Verification"
+                  description="Consent and every download recorded on Hyperledger Fabric; file hashes checked against the ledger"
+                  status="active"
+                  icon={<Shield />}
+                />
 
                 <SecurityFeature
                   title="Decentralized Storage"
@@ -618,6 +713,17 @@ const handleDeny = async (id: number) => {
           )}
         </div>
       </main>
+
+      {auditRecord && (
+        <AuditTrailModal
+          record={auditRecord}
+          entries={auditTrail}
+          loading={auditLoading}
+          error={auditError}
+          onClose={() => setAuditRecord(null)}
+          formatDate={formatDate}
+        />
+      )}
     </div>
   );
 }
@@ -708,6 +814,138 @@ function SecurityFeature({ title, description, status, icon }: {
             </span>
           </div>
           <p className="text-gray-400 text-sm">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const auditStyles: { [K in AuditAction]: { icon: React.ReactNode; color: string } } = {
+  RECORD_REGISTERED: { icon: <Upload size={16} />, color: "bg-blue-500/20 text-blue-400" },
+  ACCESS_REQUESTED: { icon: <Send size={16} />, color: "bg-yellow-500/20 text-yellow-400" },
+  ACCESS_GRANTED: { icon: <UserCheck size={16} />, color: "bg-green-500/20 text-green-400" },
+  ACCESS_DENIED: { icon: <UserX size={16} />, color: "bg-red-500/20 text-red-400" },
+  ACCESS_REVOKED: { icon: <ShieldOff size={16} />, color: "bg-red-500/20 text-red-400" },
+  RECORD_ACCESSED: { icon: <Download size={16} />, color: "bg-purple-500/20 text-purple-400" }
+};
+
+function describeAudit(entry: AuditEntry): string {
+  const doctor = entry.doctorName || `Doctor #${entry.targetId}`;
+  const actor = entry.actorName || `User #${entry.actorId}`;
+
+  switch (entry.action) {
+    case "RECORD_REGISTERED":
+      return "Record uploaded and its hash anchored on the ledger";
+    case "ACCESS_REQUESTED":
+      return `${doctor} requested access`;
+    case "ACCESS_GRANTED":
+      return `You approved access for ${doctor}`;
+    case "ACCESS_DENIED":
+      return `You denied access to ${doctor}`;
+    case "ACCESS_REVOKED":
+      return `You revoked access for ${doctor}`;
+    case "RECORD_ACCESSED":
+      return entry.actorRole === "PATIENT"
+        ? "You downloaded the record"
+        : `${actor} downloaded the record`;
+  }
+}
+
+function AuditTrailModal({ record, entries, loading, error, onClose, formatDate }: {
+  record: Record;
+  entries: AuditEntry[];
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  formatDate: (date: string) => string;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="audit-title"
+      >
+        <div className="flex items-start justify-between p-6 border-b border-gray-700">
+          <div>
+            <h2 id="audit-title" className="text-xl font-bold text-white flex items-center">
+              <History className="mr-2 text-blue-400" size={22} />
+              Audit Trail
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">{record.filename}</p>
+            <p className="text-gray-500 text-xs mt-2 flex items-center">
+              <Link2 size={12} className="mr-1" />
+              Read from the Hyperledger Fabric ledger. Entries cannot be edited or deleted.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Close"
+          >
+            <X className="text-gray-400" size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto">
+          {loading && (
+            <div className="flex items-center justify-center py-12 text-gray-400 space-x-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+              <span>Reading ledger...</span>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 flex items-center space-x-3">
+              <AlertCircle className="text-red-400" size={20} />
+              <p className="text-white text-sm">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && entries.length === 0 && (
+            <p className="text-gray-400 text-center py-12">
+              No ledger entries for this record yet
+            </p>
+          )}
+
+          {!loading && !error && entries.length > 0 && (
+            <ol className="relative border-l border-gray-700 ml-4 space-y-6">
+              {entries.map((entry) => (
+                <li key={`${entry.txId}-${entry.action}`} className="ml-6">
+                  <span
+                    className={`absolute -left-4 flex items-center justify-center w-8 h-8 rounded-full ring-4 ring-gray-800 ${auditStyles[entry.action].color}`}
+                  >
+                    {auditStyles[entry.action].icon}
+                  </span>
+                  <p className="text-white text-sm font-medium">{describeAudit(entry)}</p>
+                  <p className="text-gray-400 text-xs mt-1 flex items-center">
+                    <Clock size={12} className="mr-1" />
+                    {formatDate(entry.timestamp)}
+                  </p>
+                  <p
+                    className="text-gray-500 text-xs mt-1 font-mono flex items-center"
+                    title={entry.txId}
+                  >
+                    <Hash size={12} className="mr-1" />
+                    tx {entry.txId.substring(0, 16)}...
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       </div>
     </div>

@@ -42,8 +42,8 @@ export function Login() {
         navigate("/doctor");
       }
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
