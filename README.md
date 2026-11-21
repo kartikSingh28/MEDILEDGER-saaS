@@ -1,6 +1,8 @@
 # 🏥 MediLedger 
 ### Secure • Consent-Driven • Decentralized Healthcare Records
 
+[![CI](https://github.com/kartikSingh28/MEDILEDGER-saaS/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikSingh28/MEDILEDGER-saaS/actions/workflows/ci.yml)
+
 A production-grade healthcare data management platform that enables **secure, encrypted, and patient-controlled medical record sharing** using:
 
 - Hyperledger Fabric (permissioned blockchain)
@@ -36,7 +38,8 @@ Result → **Secure • Verifiable • Tamper-proof • Patient-centric**
 ## ✨ Features
 
 ### 🔐 Security
-- AES-256 file encryption
+- AES-256-GCM authenticated file encryption — a modified file fails its tag
+  check on decrypt, as well as the hash check on the ledger
 - SHA-256 hashing
 - JWT authentication
 - Role-Based Access Control (RBAC)

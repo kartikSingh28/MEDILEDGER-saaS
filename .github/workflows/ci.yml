@@ -1,0 +1,101 @@
+name: CI
+
+# Builds and tests every push and pull request from a clean clone, so a change
+# that only works against a local node_modules or a locally generated Prisma
+# client fails here rather than on someone else's machine.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# A new push to the same branch cancels the run still going for the old commit
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    env:
+      # prisma.config.ts reads this. `prisma generate` only parses the URL, it
+      # does not connect, so a placeholder is enough.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install
+        working-directory: Backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: Backend
+        run: npx prisma generate
+
+      - name: Typecheck
+        working-directory: Backend
+        run: npx tsc --noEmit
+
+      - name: Test
+        working-directory: Backend
+        run: npm test
+
+      - name: Build
+        working-directory: Backend
+        run: npm run build
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npx eslint .
+
+      # `npm run build` is `tsc -b && vite build`, so this typechecks too
+      - name: Typecheck and build
+        working-directory: frontend
+        run: npm run build
+
+  chaincode:
+    name: Chaincode
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: blockchain/chaincode/consent-contract
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: blockchain/chaincode/consent-contract/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The consent policy tests run against the compiled contract
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test

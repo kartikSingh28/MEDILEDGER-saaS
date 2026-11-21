@@ -1,8 +1,7 @@
-import crypto from "crypto";
 import { PermissionStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { uploadToIPFS, downloadFromIPFS } from "./ipfs.service";
-import { encryptBuffer, decryptBuffer } from "../utils/encryption";
+import { encryptBuffer, decryptBuffer, hashBuffer } from "../utils/encryption";
 import * as ledger from "./fabric.service";
 
 // The consent contract ends a grant on its own when a policy stops holding.
@@ -25,10 +24,7 @@ export async function uploadRecord(
   const cid = await uploadToIPFS(encryptedBuffer);
 
 
-  const hash = crypto
-    .createHash("sha256")
-    .update(encryptedBuffer)
-    .digest("hex");
+  const hash = hashBuffer(encryptedBuffer);
 
   const record = await prisma.record.create({
     data: {
@@ -78,10 +74,7 @@ export async function downloadRecord(
   const cid = anchored?.cid ?? record.cid;
   const encryptedBuffer = await downloadFromIPFS(cid);
 
-  const observedHash = crypto
-    .createHash("sha256")
-    .update(encryptedBuffer)
-    .digest("hex");
+  const observedHash = hashBuffer(encryptedBuffer);
 
   // The contract re-checks consent, expiry, the usage cap and this hash against
   // the one the consent was bound to. It commits its decision either way.
