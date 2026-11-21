@@ -6,6 +6,24 @@ import { prisma } from "../lib/prisma";
 
 const recordRouter = Router();
 
+// Why a doctor's download was refused before the ledger was asked
+function deniedReason(status?: string): string {
+  switch (status) {
+    case "EXPIRED":
+      return "Your access to this record has expired. Ask the patient again.";
+    case "EXHAUSTED":
+      return "You have used all the downloads the patient allowed.";
+    case "INVALIDATED":
+      return "Consent was invalidated: the stored file no longer matches the hash it was granted over.";
+    case "DENIED":
+      return "The patient denied access to this record.";
+    case "PENDING":
+      return "The patient has not approved this request yet.";
+    default:
+      return "Access denied. Not approved by patient.";
+  }
+}
+
 /* =========================
    Upload Record (Patient Only)
 ========================= */
@@ -89,17 +107,13 @@ recordRouter.get(
       ---------------------------------- */
       if (user.role === "DOCTOR") {
         const permission = await prisma.permission.findFirst({
-          where: {
-            recordId: record.id,
-            doctorId: user.userId,
-            allowed: true,
-          },
+          where: { recordId: record.id, doctorId: user.userId },
         });
 
-        if (!permission) {
-          return res
-            .status(403)
-            .json({ message: "Access denied. Not approved by patient." });
+        // A cheap first pass; the ledger makes the real decision in
+        // downloadRecord and is what ends a grant.
+        if (!permission?.allowed) {
+          return res.status(403).json({ message: deniedReason(permission?.status) });
         }
       }
 
@@ -157,8 +171,9 @@ recordRouter.get(
       }
 
       // Ledger stores user IDs only; attach names for display.
-      // For consent actions the target is the doctor.
-      const isConsentAction = (action: string) => action.startsWith("ACCESS_");
+      // Every action except these two targets a doctor.
+      const recordTargeted = new Set(["RECORD_REGISTERED", "RECORD_ACCESSED"]);
+      const isConsentAction = (action: string) => !recordTargeted.has(action);
       const userIds = new Set<number>();
       for (const entry of trail) {
         userIds.add(Number(entry.actorId));

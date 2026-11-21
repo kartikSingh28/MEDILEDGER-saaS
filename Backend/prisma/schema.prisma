@@ -12,10 +12,26 @@ enum Role {
   ADMIN
 }
 
+// APPROVED is the only state that permits a download. The three below it are
+// set by the ledger, not by the patient: the consent contract ends a grant when
+// it lapses, runs out of uses, or stops matching the data it was given over.
 enum PermissionStatus {
   PENDING
   APPROVED
   DENIED
+  EXPIRED
+  EXHAUSTED
+  INVALIDATED
+}
+
+// Why the doctor wants the record. Stated at request time and carried into the
+// on-chain consent and every audit entry.
+enum AccessPurpose {
+  TREATMENT
+  DIAGNOSIS
+  EMERGENCY
+  INSURANCE
+  RESEARCH
 }
 
 model User {
@@ -80,6 +96,18 @@ model Permission {
 
   status    PermissionStatus @default(PENDING)
   allowed   Boolean          @default(false)
+
+  purpose   AccessPurpose    @default(TREATMENT)
+
+  // Terms the patient set on the grant. Mirrored from the ledger, which
+  // enforces them; these columns exist so the dashboards can show them.
+  expiresAt   DateTime?
+  maxAccesses Int      @default(0) // 0 = unlimited
+  accessCount Int      @default(0)
+
+  // Break-glass access taken by the doctor without the patient, and why
+  emergency Boolean @default(false)
+  reason    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

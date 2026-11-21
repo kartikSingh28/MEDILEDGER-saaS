@@ -44,7 +44,7 @@ async function main() {
     let consent = await ledger.getConsent(p.patientId, p.recordId, p.doctorId);
 
     if (!consent) {
-      await ledger.requestAccess(p.doctorId, p.recordId);
+      await ledger.requestAccess(p.doctorId, p.recordId, p.purpose);
       consent = await ledger.getConsent(p.patientId, p.recordId, p.doctorId);
       console.log(`  + ${label} requested`);
       written++;
@@ -54,7 +54,11 @@ async function main() {
 
     if (p.status === PermissionStatus.APPROVED && onChain !== "GRANTED") {
       if (onChain === "PENDING") {
-        await ledger.grantAccess(p.patientId, p.recordId, p.doctorId);
+        // Carry over the terms Postgres already holds for this grant
+        await ledger.grantAccess(p.patientId, p.recordId, p.doctorId, {
+          expiresAt: p.expiresAt && p.expiresAt > new Date() ? p.expiresAt : null,
+          maxAccesses: p.maxAccesses,
+        });
         console.log(`  + ${label} granted`);
         written++;
       } else {

@@ -1,10 +1,17 @@
 import crypto from "crypto";
+import { PermissionStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { uploadToIPFS, downloadFromIPFS } from "./ipfs.service";
 import { encryptBuffer, decryptBuffer } from "../utils/encryption";
 import * as ledger from "./fabric.service";
 
-
+// The consent contract ends a grant on its own when a policy stops holding.
+// Mirror that into Postgres so the dashboards show why access stopped.
+const outcomeToStatus: Record<string, PermissionStatus> = {
+  CONSENT_EXPIRED: PermissionStatus.EXPIRED,
+  CONSENT_EXHAUSTED: PermissionStatus.EXHAUSTED,
+  CONSENT_INVALIDATED: PermissionStatus.INVALIDATED,
+};
 
 export async function uploadRecord(
   fileBuffer: Buffer,
@@ -55,24 +62,39 @@ export async function downloadRecord(
     throw new Error("Record not found");
   }
 
-  // Signed by the downloader: the ledger re-checks their consent and logs the access
-  const anchored = await ledger.logAccess(userId, recordId);
+  // Cheap gate: refuse before fetching the file if the ledger already says no.
+  // This writes nothing, so a blocked attempt is still logged by LogAccess below.
+  const permitted = await ledger.checkAccess(userId, recordId);
+  if (permitted === false) {
+    throw new Error("You have no consent to access this record");
+  }
 
+  // Read the anchored CID rather than trusting the Postgres row
+  const anchored = await ledger.getRecord(userId, recordId);
   if (anchored && (anchored.cid !== record.cid || anchored.hash !== record.hash)) {
     throw new Error("Record metadata does not match the ledger");
   }
 
   const cid = anchored?.cid ?? record.cid;
-  const expectedHash = anchored?.hash ?? record.hash;
-
   const encryptedBuffer = await downloadFromIPFS(cid);
 
-  const newHash = crypto
+  const observedHash = crypto
     .createHash("sha256")
     .update(encryptedBuffer)
     .digest("hex");
 
-  if (newHash !== expectedHash) {
+  // The contract re-checks consent, expiry, the usage cap and this hash against
+  // the one the consent was bound to. It commits its decision either way.
+  const result = await ledger.logAccess(userId, recordId, observedHash);
+
+  if (result) {
+    if (!result.allowed) {
+      await mirrorOutcome(recordId, userId, result.outcome);
+      throw new Error(result.reason || "The ledger refused this access");
+    }
+    await mirrorAccess(recordId, userId, result.accessCount);
+  } else if (observedHash !== record.hash) {
+    // Ledger disabled: fall back to checking against the stored hash
     throw new Error("File tampered");
   }
 
@@ -82,6 +104,26 @@ export async function downloadRecord(
     buffer: decrypted,
     filename: record.filename
   };
+}
+
+// Reflect a contract-ended consent in the permission row the UI reads
+async function mirrorOutcome(recordId: number, doctorId: number, outcome: string) {
+  const status = outcomeToStatus[outcome];
+  if (!status) return;
+
+  await prisma.permission.updateMany({
+    where: { recordId, doctorId },
+    data: { status, allowed: false },
+  });
+}
+
+async function mirrorAccess(recordId: number, doctorId: number, accessCount: number) {
+  if (!accessCount) return;
+
+  await prisma.permission.updateMany({
+    where: { recordId, doctorId },
+    data: { accessCount },
+  });
 }
 
 export async function getAuditTrail(patientId: number, recordId: number) {

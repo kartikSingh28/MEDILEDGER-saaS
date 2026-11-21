@@ -37,14 +37,48 @@ export interface LedgerRecord {
   txId: string;
 }
 
+export type ConsentStatus =
+  | "PENDING"
+  | "GRANTED"
+  | "DENIED"
+  | "REVOKED"
+  | "EXPIRED"
+  | "EXHAUSTED"
+  | "INVALIDATED";
+
+export type AccessPurpose = "TREATMENT" | "DIAGNOSIS" | "EMERGENCY" | "INSURANCE" | "RESEARCH";
+
 export interface LedgerConsent {
   recordId: string;
   patientId: string;
   patientMsp: string;
   doctorId: string;
   doctorMsp: string;
-  status: "PENDING" | "GRANTED" | "DENIED" | "REVOKED";
+  status: ConsentStatus;
+  dataHash: string;
+  purpose: AccessPurpose;
+  expiresAt: string;
+  maxAccesses: number;
+  accessCount: number;
+  emergency: boolean;
+  reason: string;
   updatedAt: string;
+  txId: string;
+}
+
+// What LogAccess returns. A refusal comes back as allowed:false rather than an
+// error, because the chaincode has to commit the consent state change that goes
+// with it (see ConsentContract.LogAccess).
+export interface AccessResult {
+  allowed: boolean;
+  outcome: string;
+  reason: string;
+  recordId: string;
+  cid: string;
+  hash: string;
+  accessCount: number;
+  maxAccesses: number;
+  expiresAt: string;
   txId: string;
 }
 
@@ -57,6 +91,8 @@ export interface AuditEntry {
   action: string;
   targetId: string;
   targetMsp: string;
+  purpose: string;
+  detail: string;
   timestamp: string;
   txId: string;
 }
@@ -141,14 +177,34 @@ export async function registerRecord(patientId: number, recordId: number, cid: s
   await submit(patientId, "RegisterRecord", recordId, cid, fileHash);
 }
 
-export async function requestAccess(doctorId: number, recordId: number) {
+export async function requestAccess(doctorId: number, recordId: number, purpose: AccessPurpose) {
   if (!fabricEnabled) return;
-  await submit(doctorId, "RequestAccess", recordId);
+  await submit(doctorId, "RequestAccess", recordId, purpose);
 }
 
-export async function grantAccess(patientId: number, recordId: number, doctorId: number) {
+// `expiresAt` is an ISO timestamp or null for no expiry; `maxAccesses` is 0 for unlimited.
+export async function grantAccess(
+  patientId: number,
+  recordId: number,
+  doctorId: number,
+  terms: { expiresAt: Date | null; maxAccesses: number }
+) {
   if (!fabricEnabled) return;
-  await submit(patientId, "GrantAccess", recordId, await hospitalMspOf(doctorId), doctorId);
+  await submit(
+    patientId,
+    "GrantAccess",
+    recordId,
+    await hospitalMspOf(doctorId),
+    doctorId,
+    terms.expiresAt ? terms.expiresAt.toISOString() : "",
+    terms.maxAccesses
+  );
+}
+
+// Break-glass: the doctor takes short, capped access without the patient.
+export async function emergencyAccess(doctorId: number, recordId: number, reason: string): Promise<LedgerConsent | null> {
+  if (!fabricEnabled) return null;
+  return JSON.parse(await submit(doctorId, "EmergencyAccess", recordId, reason));
 }
 
 export async function denyAccess(patientId: number, recordId: number, doctorId: number) {
@@ -161,15 +217,30 @@ export async function revokeAccess(patientId: number, recordId: number, doctorId
   await submit(patientId, "RevokeAccess", recordId, await hospitalMspOf(doctorId), doctorId);
 }
 
-// Checks consent on-chain and appends an access entry. Throws if the ledger denies access.
-export async function logAccess(userId: number, recordId: number): Promise<LedgerRecord | null> {
+// Re-checks consent, expiry, the usage cap and the integrity of the bytes the
+// caller actually fetched, then appends an access entry. `observedHash` is the
+// SHA-256 of those bytes: the chaincode compares it to the hash the consent was
+// bound to, and ends the consent if they differ.
+//
+// A refusal comes back as allowed:false, not an exception — the caller decides.
+export async function logAccess(
+  userId: number,
+  recordId: number,
+  observedHash: string
+): Promise<AccessResult | null> {
   if (!fabricEnabled) return null;
-  return JSON.parse(await submit(userId, "LogAccess", recordId));
+  return JSON.parse(await submit(userId, "LogAccess", recordId, observedHash));
 }
 
 /* =========================
    Reads
 ========================= */
+
+// Read-only pre-check, so a download can be refused before the file is fetched
+export async function checkAccess(userId: number, recordId: number): Promise<boolean | null> {
+  if (!fabricEnabled) return null;
+  return JSON.parse(await evaluate(userId, "CheckAccess", recordId));
+}
 
 export async function getRecord(userId: number, recordId: number): Promise<LedgerRecord | null> {
   if (!fabricEnabled) return null;

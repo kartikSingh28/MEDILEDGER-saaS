@@ -58,6 +58,23 @@ Result → **Secure • Verifiable • Tamper-proof • Patient-centric**
 - Ownership verification
 - Tamper detection
 
+### ✅ Consent control
+Every rule below is enforced by the smart contract on each access, not by the
+backend — a tampered database row cannot widen access.
+
+- **Hash-bound consent** — a grant is tied to the SHA-256 of the exact encrypted
+  file it was given over. If the stored bytes stop matching, the contract
+  invalidates the consent on the spot.
+- **Time-bound** — the patient sets how long a grant lasts; it lapses on its own.
+- **Usage-capped** — the patient sets how many downloads a grant allows.
+- **Purpose-bound** — the doctor states why (treatment, diagnosis, insurance,
+  research); the purpose is carried into every audit entry.
+- **Emergency break-glass** — a doctor can take 60 minutes and 3 downloads
+  without the patient, with a mandatory written reason, flagged as an emergency
+  on the ledger and revocable at any time.
+- **Blocked attempts are logged** — a refused access is recorded on the trail
+  with the reason, alongside the ones that succeeded.
+
 ### 📜 Auditability
 - Every action recorded
 - Transparent access history
