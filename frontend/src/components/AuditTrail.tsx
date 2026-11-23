@@ -120,12 +120,12 @@ export function AuditTrail({ record, onClose }: { record: { id: number; filename
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-fg/25" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="audit-title"
-        className="flex h-full w-full max-w-xl flex-col border-l border-line bg-panel"
+        className="flex h-full w-full max-w-xl flex-col border-l border-line bg-panel shadow-drawer"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">

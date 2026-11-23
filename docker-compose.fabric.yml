@@ -1,0 +1,38 @@
+# Fabric overlay. Joins the backend to the Hyperledger Fabric network created
+# by blockchain/network/network.sh and turns the ledger on.
+#
+# The network and the crypto material must exist first:
+#
+#   cd blockchain/network && ./network.sh up
+#   docker compose -f docker-compose.yml -f docker-compose.fabric.yml up -d --build
+#
+# Kept separate from the base file because `fabric_test` is an external network:
+# compose refuses to start at all if it is declared and missing, which would
+# make the whole stack depend on Fabric being up.
+
+services:
+  backend:
+    environment:
+      FABRIC_ENABLED: "true"
+      FABRIC_CRYPTO_PATH: /app/fabric/crypto
+      # One Fabric organization per hospital: City General (Org1), Metro Care (Org2)
+      FABRIC_ORG1_PEER_ENDPOINT: peer0.org1.example.com:7051
+      FABRIC_ORG2_PEER_ENDPOINT: peer0.org2.example.com:9051
+      # Each CA's TLS cert covers localhost and orgN.example.com, not the container
+      # name ca_orgN, so reach the CAs through the host's published ports
+      FABRIC_ORG1_CA_URL: https://org1.example.com:7054
+      FABRIC_ORG2_CA_URL: https://org2.example.com:8054
+    extra_hosts:
+      - "org1.example.com:host-gateway"
+      - "org2.example.com:host-gateway"
+    volumes:
+      # Written by blockchain/network/network.sh
+      - ./Backend/fabric/crypto:/app/fabric/crypto:ro
+    networks:
+      - default
+      - fabric
+
+networks:
+  fabric:
+    name: fabric_test
+    external: true

@@ -4,18 +4,60 @@
 
 @layer base {
   html {
-    color-scheme: dark;
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-canvas font-sans text-fg antialiased;
+    /* Inter's alternate letterforms: a single-storey 'a' is avoided, and the
+       disambiguated l/I/1 matters when the page is full of IDs and hashes. */
+    font-feature-settings: "cv05" 1, "cv11" 1, "ss01" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Headings read tighter than body copy at every size, so set it once here
+     rather than remembering `tracking-tight` on each one. */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tighter;
+  }
+
+  /* Figures line up in columns: record IDs, counts, dates, byte sizes. */
+  table,
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    @apply font-mono;
   }
 
   ::selection {
-    @apply bg-accent/30;
+    @apply bg-accent/15;
   }
 
+  /* No ring offset: controls sit on white cards and on the warm canvas, and an
+     offset coloured for one surface shows as a halo on the other. */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent/70 ring-offset-2 ring-offset-canvas;
+    @apply outline-none ring-2 ring-accent/60;
+  }
+
+  /* Honour the system setting for everything that moves, including the
+     transitions components set inline. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

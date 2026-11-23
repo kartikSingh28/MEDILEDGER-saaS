@@ -12,12 +12,32 @@ const app = express(); // ✅ FIRST create app
 
 app.use(express.json());
 
-app.use(cors({
-  origin: "http://localhost:5173",
-}));
+// Comma-separated list, so a deployment can allow its own origin without a
+// code change. Defaults to the Vite dev server for local work.
+const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    // Requests with no Origin header (curl, health checks, same-origin) are allowed through
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
+  })
+);
 
 app.get("/", (_req, res) => {
   res.send("MediLedger Backend Running");
+});
+
+// Unauthenticated liveness probe for load balancers and container health checks
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
 });
 
 
@@ -39,8 +59,11 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-const PORT = 5000;
+// Hosts that assign a port inject it as PORT; 5000 is the local default.
+const PORT = Number(process.env.PORT) || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// Bind on all interfaces so the process is reachable from outside its container
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Allowed origins: ${allowedOrigins.join(", ")}`);
 });

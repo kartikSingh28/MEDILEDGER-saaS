@@ -41,7 +41,7 @@ export function AppShell<K extends string>({
         onClick={() => onSelect(item.key)}
         aria-current={selected ? "page" : undefined}
         className={`flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors md:w-full ${
-          selected ? "bg-raised text-fg" : "text-muted hover:bg-raised/60 hover:text-fg"
+          selected ? "bg-accent/10 font-medium text-accent" : "text-muted hover:bg-raised hover:text-fg"
         }`}
       >
         <span className={selected ? "text-accent" : ""}>{item.icon}</span>
