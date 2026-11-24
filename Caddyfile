@@ -1,0 +1,43 @@
+# Reverse proxy for the deployed stack.
+#
+# Caddy terminates TLS and serves both the app and the API from one origin, so
+# the browser never makes a cross-origin request and CORS stops mattering.
+#
+# DOMAIN controls the address and whether HTTPS is automatic:
+#   DOMAIN=records.example.com  -> Caddy obtains and renews a Let's Encrypt
+#                                  certificate on its own (needs the DNS A
+#                                  record pointing here and ports 80+443 open)
+#   DOMAIN=:80                  -> plain HTTP, for an IP-only box or a tunnel
+
+{$DOMAIN::80} {
+	encode zstd gzip
+
+	# API. The prefix is stripped, so /api/auth/signin reaches the backend as
+	# /auth/signin and the Express routes stay unchanged.
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:5000 {
+			health_uri /health
+			health_interval 30s
+		}
+	}
+
+	# Everything else is the React app, served by its nginx container
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	header {
+		# Tell browsers to stay on HTTPS. Only meaningful once a real
+		# certificate is in place; harmless on plain HTTP.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

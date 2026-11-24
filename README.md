@@ -85,6 +85,21 @@ backend — a tampered database row cannot widen access.
 
 ---
 
+## 🚢 Deploying
+
+One Docker host runs everything, with Caddy in front for automatic HTTPS:
+
+```bash
+cp .env.production.example .env        # domain + Postgres password
+cp Backend/.env.example Backend/.env   # JWT / FILE / WALLET secrets
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Full instructions, including turning the Fabric ledger on, are in
+[DEPLOY.md](DEPLOY.md).
+
+---
+
 ## 🧠 Architecture
 
 Frontend (React)

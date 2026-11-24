@@ -1,0 +1,7 @@
+# Cloudflare Pages / Netlify SPA fallback.
+#
+# React Router owns /login, /signup, /patient and /doctor — there are no files
+# at those paths, so without this a refresh or a direct link returns 404.
+# Real files (assets, favicon) are served first; everything else falls through
+# to the app with a 200, not a redirect, so the URL is preserved.
+/*    /index.html   200

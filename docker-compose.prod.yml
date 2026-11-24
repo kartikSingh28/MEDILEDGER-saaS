@@ -1,0 +1,55 @@
+# Production overlay. Adds Caddy in front and stops the app containers from
+# being reachable from outside the box — only Caddy binds a public port.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# With the ledger as well (see DEPLOY.md):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.fabric.yml \
+#                  -f docker-compose.prod.yml up -d --build
+#
+# Reads DOMAIN, POSTGRES_PASSWORD, CORS_ORIGIN and VITE_API_URL from a .env
+# file beside this one. Backend secrets live in Backend/.env.
+
+services:
+  postgres:
+    restart: unless-stopped
+
+  ipfs:
+    restart: unless-stopped
+
+  backend:
+    restart: unless-stopped
+    # !override replaces the base list instead of appending to it. Without the
+    # tag Compose keeps the base's public "5000:5000" alongside this one and
+    # the API stays reachable from the internet, bypassing Caddy and TLS.
+    ports: !override
+      - "127.0.0.1:5000:5000"
+
+  frontend:
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:8081:80"
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    environment:
+      # A bare hostname gets automatic HTTPS; ":80" serves plain HTTP.
+      # Compose's default syntax is ${VAR:-default}, so the default here is ":80".
+      DOMAIN: ${DOMAIN:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificates and ACME account keys — must persist
+      - caddy-config:/config
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  caddy-data:
+  caddy-config:
