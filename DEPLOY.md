@@ -138,6 +138,42 @@ loopback and reachable solely over the Compose network.
 
 Without a domain you can still run on plain HTTP by setting `DOMAIN=:80`.
 
+### On AWS EC2
+
+Launch an instance with:
+
+| Setting | Value |
+|---|---|
+| AMI | Ubuntu Server 24.04 LTS |
+| Instance type | **t3.medium** (2 vCPU / 4 GB) — `t3.micro` is 1 GB and too small for Fabric |
+| Storage | 30 GB gp3 |
+| Key pair | create one, keep the `.pem` |
+
+**Security group inbound rules** — this is the step people miss:
+
+| Type | Port | Source |
+|---|---|---|
+| SSH | 22 | your IP |
+| HTTP | 80 | 0.0.0.0/0 |
+| HTTPS | 443 | 0.0.0.0/0 |
+
+Ports 80 and 443 must be open to the world *before* Caddy starts, or its
+certificate challenge fails and you get a TLS error that looks like a DNS
+problem.
+
+Then **allocate an Elastic IP and associate it** with the instance. Without
+one the public IP changes on every stop/start and your DNS record goes stale.
+
+Connect with:
+
+```bash
+ssh -i your-key.pem ubuntu@<elastic-ip>
+```
+
+Set a billing alarm while you are in the console: the free plan for new
+accounts is $200 of credits over 6 months, and a t3.medium is roughly
+$30/month.
+
 ## 2. Install Docker
 
 On a fresh Ubuntu box:
