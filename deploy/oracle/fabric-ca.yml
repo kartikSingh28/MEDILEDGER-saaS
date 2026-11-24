@@ -1,0 +1,14 @@
+# Apply to fabric-samples/test-network/compose/compose-ca.yaml after network.sh up.
+services:
+  ca_org1:
+    restart: unless-stopped
+    networks:
+      test:
+        aliases:
+          - org1.example.com
+  ca_org2:
+    restart: unless-stopped
+    networks:
+      test:
+        aliases:
+          - org2.example.com

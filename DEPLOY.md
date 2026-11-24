@@ -2,6 +2,9 @@
 
 Two routes, depending on whether you need the blockchain live.
 
+For the classroom demo on an Oracle ARM64 VM with public HTTPS through Cloudflare,
+see [Deploy MediLedger on Oracle Cloud](DEPLOY-ORACLE.md).
+
 | | Fabric | Cost | Guide |
 |---|---|---|---|
 | **Railway + Cloudflare Pages** | No | free–$5/mo | [below](#route-a--railway--cloudflare-pages) |
