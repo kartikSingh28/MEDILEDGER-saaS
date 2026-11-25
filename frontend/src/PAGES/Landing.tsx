@@ -1,7 +1,7 @@
 import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight,
+  ChevronRight,
   Building2,
   CheckCircle2,
   FileLock2,
@@ -66,19 +66,32 @@ const guarantees = [
   },
 ];
 
+const navLinks = [
+  ["#flow", "How it works"],
+  ["#inside", "Inside the app"],
+  ["#ledger", "Security"],
+];
+
 export function Landing() {
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="sticky top-0 z-40 border-b border-line bg-canvas">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <Wordmark />
-          <nav className="flex items-center gap-1 text-sm">
-            <Link to="/login" className="rounded-md px-3 py-2 font-medium text-muted hover:bg-raised hover:text-fg">
+    <div className="min-h-screen bg-panel">
+      <header className="glass sticky top-0 z-40 border-b border-line/60">
+        <div className="mx-auto flex h-12 max-w-[1024px] items-center justify-between px-4 sm:px-6">
+          <Link to="/" aria-label="MediLedger home" className="inline-flex">
+            <Wordmark />
+          </Link>
+          <nav className="flex items-center gap-1 text-[13px]" aria-label="Main">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} className="hidden rounded-full px-3 py-1.5 text-fg/80 transition-colors hover:text-fg md:inline-block">
+                {label}
+              </a>
+            ))}
+            <Link to="/login" className="rounded-full px-3 py-1.5 text-fg/80 transition-colors hover:text-fg">
               Sign in
             </Link>
             <Link
               to="/signup"
-              className="rounded-md bg-accent px-3.5 py-2 font-medium text-accent-fg shadow-button hover:bg-accent-hover"
+              className="ml-1 rounded-full bg-accent px-3.5 py-1.5 font-medium text-accent-fg transition-colors hover:bg-accent-hover"
             >
               Create account
             </Link>
@@ -88,185 +101,166 @@ export function Landing() {
 
       <main>
         {/* Hero */}
-        <section className="relative overflow-hidden border-b border-line">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-accent/10 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(theme(colors.line)_1px,transparent_1px),linear-gradient(90deg,theme(colors.line)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]"
-          />
+        <section className="overflow-hidden bg-panel">
+          <div className="mx-auto max-w-[1024px] px-4 pt-16 text-center sm:px-6 sm:pt-24">
+            <p className="text-[17px] font-semibold text-accent sm:text-xl">Hyperledger Fabric · IPFS</p>
 
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:py-24">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-xs font-medium text-muted shadow-button">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Hyperledger Fabric · IPFS
-              </span>
+            <h1 className="headline mx-auto mt-3 max-w-4xl text-[2.75rem] sm:text-6xl lg:text-[5rem]">
+              Medical records the patient controls.
+            </h1>
+            <p className="headline mx-auto mt-2 max-w-4xl text-[1.75rem] !text-muted sm:text-4xl lg:text-5xl">
+              On a ledger hospitals share.
+            </p>
 
-              <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-fg sm:text-5xl">
-                Medical records the patient controls, on a ledger hospitals share.
-              </h1>
+            <p className="mx-auto mt-7 max-w-2xl text-[17px] leading-relaxed text-muted sm:text-xl sm:leading-relaxed">
+              MediLedger encrypts each record, stores it on IPFS and anchors its fingerprint on a permissioned
+              blockchain run jointly by the participating hospitals. A doctor sees a record only after the patient
+              approves — and every approval, limit and download is signed and kept.
+            </p>
 
-              <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-                MediLedger encrypts each record, stores it on IPFS and anchors its fingerprint on a permissioned
-                blockchain run jointly by the participating hospitals. A doctor sees a record only after the patient
-                approves — and every approval, limit and download is signed and kept.
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/signup"
-                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-medium text-accent-fg shadow-button hover:bg-accent-hover"
-                >
-                  Create an account
-                  <ArrowRight size={16} aria-hidden />
-                </Link>
-                <Link
-                  to="/login"
-                  className="inline-flex h-11 items-center rounded-lg border border-line-strong bg-panel px-5 text-sm font-medium text-fg shadow-button hover:border-faint hover:bg-raised"
-                >
-                  Sign in
-                </Link>
-              </div>
-
-              <dl className="mt-10 grid max-w-md grid-cols-3 gap-6 border-t border-line pt-6">
-                {[
-                  ["AES-256", "GCM encrypted"],
-                  ["2 orgs", "endorse each write"],
-                  ["0", "plaintext on the server"],
-                ].map(([value, label]) => (
-                  <div key={label}>
-                    <dt className="text-xl font-semibold tracking-tight text-fg">{value}</dt>
-                    <dd className="mt-0.5 text-xs leading-snug text-faint">{label}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            <div className="relative -my-8 hidden h-[28rem] lg:block">
-              <Suspense fallback={null}>
-                <LedgerScene className="absolute inset-0" />
-              </Suspense>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+              <Link
+                to="/signup"
+                className="inline-flex h-12 items-center rounded-full bg-accent px-7 text-[17px] font-medium text-accent-fg transition-[background-color,transform] duration-200 hover:bg-accent-hover active:scale-[0.98]"
+              >
+                Create an account
+              </Link>
+              <Link to="/login" className="group inline-flex items-center gap-0.5 text-[17px] text-accent hover:underline">
+                Sign in
+                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
             </div>
           </div>
+
+          <div className="relative mx-auto hidden h-[28rem] max-w-4xl md:block lg:h-[36rem]">
+            <Suspense fallback={null}>
+              <LedgerScene className="absolute inset-0" />
+            </Suspense>
+          </div>
+
+          <dl className="mx-auto grid max-w-3xl grid-cols-3 gap-4 px-4 pb-20 pt-12 text-center sm:px-6 md:pt-0">
+            {[
+              ["AES-256", "GCM encrypted"],
+              ["2 orgs", "endorse each write"],
+              ["0", "plaintext on the server"],
+            ].map(([value, label]) => (
+              <div key={label}>
+                <dt className="headline whitespace-nowrap text-[1.75rem] sm:text-5xl">{value}</dt>
+                <dd className="mt-2 text-sm text-muted sm:text-[15px]">{label}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         {/* How it works */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="flow-heading">
-          <Reveal className="max-w-2xl">
-            <p className="text-xs font-medium uppercase tracking-widest text-accent">How a record moves</p>
-            <h2 id="flow-heading" className="mt-3 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
-              Four steps, each one signed
-            </h2>
-          </Reveal>
-
-          <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map(({ icon: Icon, title, body }, i) => (
-              <li key={title}>
-                <Reveal
-                  delay={i * 90}
-                  className="h-full rounded-xl border border-line bg-panel p-5 shadow-panel transition-shadow hover:shadow-lift"
-                >
-                <div className="flex items-center justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Icon size={18} aria-hidden />
-                  </span>
-                  <span className="font-mono text-xs text-faint">{String(i + 1).padStart(2, "0")}</span>
-                </div>
-                <h3 className="mt-4 font-semibold text-fg">{title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
-                </Reveal>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Inside the app */}
-        <section className="border-y border-line bg-raised" aria-labelledby="app-heading">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
-            <Reveal className="max-w-2xl">
-              <p className="text-xs font-medium uppercase tracking-widest text-accent">Inside the app</p>
-              <h2 id="app-heading" className="mt-3 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
-                What the patient decides, and what the chain remembers
+        <section id="flow" className="scroll-mt-12 bg-canvas" aria-labelledby="flow-heading">
+          <div className="mx-auto max-w-[1024px] px-4 py-24 sm:px-6 lg:py-32">
+            <Reveal className="mx-auto max-w-3xl text-center">
+              <p className="text-[17px] font-semibold text-accent">How a record moves</p>
+              <h2 id="flow-heading" className="headline mt-3 text-4xl sm:text-5xl lg:text-[3.5rem]">
+                Four steps. Each one signed.
               </h2>
             </Reveal>
 
-            <div className="mt-10 grid items-start gap-6 lg:grid-cols-2 lg:gap-10">
-              <Reveal>
-                <ConsoleMock />
-                <p className="mt-3 text-sm leading-relaxed text-muted">
+            <ol className="mt-16 grid gap-5 sm:grid-cols-2">
+              {steps.map(({ icon: Icon, title, body }, i) => (
+                <li key={title}>
+                  <Reveal
+                    delay={i * 90}
+                    className="flex h-full flex-col rounded-4xl bg-panel p-8 shadow-panel transition-[transform,box-shadow] duration-500 ease-apple hover:-translate-y-1 hover:shadow-lift sm:p-10"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                        <Icon size={22} aria-hidden />
+                      </span>
+                      <span className="headline text-5xl !text-line">{String(i + 1).padStart(2, "0")}</span>
+                    </div>
+                    <h3 className="mt-8 text-2xl font-semibold text-fg">{title}</h3>
+                    <p className="mt-2 text-[17px] leading-relaxed text-muted">{body}</p>
+                  </Reveal>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Inside the app */}
+        <section id="inside" className="scroll-mt-12 bg-panel" aria-labelledby="app-heading">
+          <div className="mx-auto max-w-[1024px] px-4 py-24 sm:px-6 lg:py-32">
+            <Reveal className="mx-auto max-w-3xl text-center">
+              <p className="text-[17px] font-semibold text-accent">Inside the app</p>
+              <h2 id="app-heading" className="headline mt-3 text-4xl sm:text-5xl lg:text-[3.5rem]">
+                What the patient decides. What the chain remembers.
+              </h2>
+            </Reveal>
+
+            <div className="mt-16 grid items-stretch gap-5 lg:grid-cols-2">
+              <Reveal className="flex h-full flex-col rounded-4xl bg-canvas p-6 sm:p-10">
+                <h3 className="text-2xl font-semibold text-fg">Consent, on your terms.</h3>
+                <p className="mt-2 text-[17px] leading-relaxed text-muted">
                   Approving sets the terms: how long the access lasts and how many downloads it allows.
                 </p>
+                <div className="mt-8">
+                  <ConsoleMock />
+                </div>
               </Reveal>
-              <Reveal delay={120}>
-                <AuditMock />
-                <p className="mt-3 text-sm leading-relaxed text-muted">
+              <Reveal delay={120} className="flex h-full flex-col rounded-4xl bg-canvas p-6 sm:p-10">
+                <h3 className="text-2xl font-semibold text-fg">A history no one can edit.</h3>
+                <p className="mt-2 text-[17px] leading-relaxed text-muted">
                   The same record's history, read straight from the ledger.
                 </p>
+                <div className="mt-8">
+                  <AuditMock />
+                </div>
               </Reveal>
             </div>
           </div>
         </section>
 
         {/* Guarantees */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="ledger-heading">
-          <Reveal className="max-w-2xl">
-            <p className="text-xs font-medium uppercase tracking-widest text-accent">What the ledger guarantees</p>
-            <h2 id="ledger-heading" className="mt-3 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
-              Trust that does not rest on trusting the server
-            </h2>
-          </Reveal>
+        <section id="ledger" className="scroll-mt-12 bg-canvas" aria-labelledby="ledger-heading">
+          <div className="mx-auto max-w-[1024px] px-4 py-24 sm:px-6 lg:py-32">
+            <Reveal className="mx-auto max-w-3xl text-center">
+              <p className="text-[17px] font-semibold text-accent">What the ledger guarantees</p>
+              <h2 id="ledger-heading" className="headline mt-3 text-4xl sm:text-5xl lg:text-[3.5rem]">
+                Trust that doesn't rest on trusting the server.
+              </h2>
+            </Reveal>
 
-          <ul className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
-            {guarantees.map(({ icon: Icon, title, body }, i) => (
-              <li key={title}>
-                <Reveal delay={i * 90}>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Icon size={18} aria-hidden />
-                  </span>
-                  <h3 className="mt-4 font-semibold text-fg">{title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{body}</p>
-                </Reveal>
-              </li>
-            ))}
-          </ul>
+            <ul className="mt-16 grid gap-5 sm:grid-cols-2">
+              {guarantees.map(({ icon: Icon, title, body }, i) => (
+                <li key={title}>
+                  <Reveal delay={i * 90} className="h-full rounded-4xl bg-panel p-8 shadow-panel sm:p-10">
+                    <Icon size={32} strokeWidth={1.6} className="text-accent" aria-hidden />
+                    <h3 className="mt-6 text-2xl font-semibold leading-snug text-fg">{title}</h3>
+                    <p className="mt-3 text-[17px] leading-relaxed text-muted">{body}</p>
+                  </Reveal>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         {/* Close */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20">
-          <div className="relative overflow-hidden rounded-2xl border border-line bg-raised px-6 py-12 text-center shadow-lift sm:px-12">
-            <div
-              aria-hidden
-              className="absolute inset-0 opacity-60 [background-image:linear-gradient(theme(colors.line)_1px,transparent_1px),linear-gradient(90deg,theme(colors.line)_1px,transparent_1px)] [background-size:40px_40px]"
-            />
-            <div
-              aria-hidden
-              className="absolute left-1/2 top-0 h-64 w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/20 blur-3xl"
-            />
-            <div className="relative">
-              <h2 className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
-                See the consent trail for yourself
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl leading-relaxed text-muted">
-                Create an account as a patient, upload a record, and watch each request, grant and download land on
-                the ledger — signed, timestamped and impossible to edit after the fact.
-              </p>
-              <Link
-                to="/signup"
-                className="mt-8 inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-medium text-accent-fg shadow-button hover:bg-accent-hover"
-              >
-                Get started
-                <ArrowRight size={16} aria-hidden />
-              </Link>
-            </div>
-          </div>
+        <section className="bg-panel">
+          <Reveal className="mx-auto max-w-3xl px-4 py-28 text-center sm:px-6 lg:py-36">
+            <h2 className="headline text-4xl sm:text-5xl lg:text-[3.5rem]">See the consent trail for yourself.</h2>
+            <p className="mx-auto mt-6 max-w-2xl text-[17px] leading-relaxed text-muted sm:text-xl sm:leading-relaxed">
+              Create an account as a patient, upload a record, and watch each request, grant and download land on
+              the ledger — signed, timestamped and impossible to edit after the fact.
+            </p>
+            <Link
+              to="/signup"
+              className="mt-10 inline-flex h-12 items-center rounded-full bg-accent px-7 text-[17px] font-medium text-accent-fg transition-[background-color,transform] duration-200 hover:bg-accent-hover active:scale-[0.98]"
+            >
+              Get started
+            </Link>
+          </Reveal>
         </section>
       </main>
 
-      <footer className="border-t border-line bg-canvas">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-xs text-faint sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <footer className="bg-canvas">
+        <div className="mx-auto flex max-w-[1024px] flex-col gap-3 border-t border-line px-4 py-6 text-xs text-faint sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Wordmark />
           <p>Prototype on Hyperledger Fabric 2.5, IPFS and PostgreSQL.</p>
         </div>
@@ -280,15 +274,15 @@ export function Landing() {
 function ConsoleMock() {
   return (
     <div className="relative">
-      <div className="overflow-hidden rounded-xl border border-line bg-panel shadow-float">
-        <div className="flex items-center gap-2 border-b border-line bg-canvas px-4 py-2.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-line-strong" />
-          <span className="h-2.5 w-2.5 rounded-full bg-line-strong" />
-          <span className="h-2.5 w-2.5 rounded-full bg-line-strong" />
+      <div className="overflow-hidden rounded-2xl bg-panel shadow-lift">
+        <div className="flex items-center gap-2 border-b border-line/70 px-4 py-3">
+          <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+          <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+          <span className="h-3 w-3 rounded-full bg-[#28c840]" />
           <span className="ml-2 font-mono text-[11px] text-faint">mediledger · access requests</span>
         </div>
 
-        <div className="divide-y divide-line">
+        <div className="divide-y divide-line/70">
           <MockRow
             name="Dr. A. Mehta"
             hospital="Metro Care Hospital"
@@ -317,9 +311,9 @@ function ConsoleMock() {
 }
 
 const mockStatus = {
-  pending: { label: "Pending", className: "border-warn/40 bg-warn/5 text-warn" },
-  granted: { label: "Approved", className: "border-ok/40 bg-ok/5 text-ok" },
-  expired: { label: "Expired", className: "border-line-strong text-muted" },
+  pending: { label: "Pending", className: "bg-warn/10 text-warn" },
+  granted: { label: "Approved", className: "bg-ok/10 text-ok" },
+  expired: { label: "Expired", className: "bg-raised text-muted" },
 };
 
 function MockRow({
@@ -339,13 +333,13 @@ function MockRow({
 }) {
   const badge = mockStatus[status];
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-3.5">
+    <div className="flex items-start justify-between gap-4 px-5 py-4">
       <div className="min-w-0">
         <p className="text-sm font-medium text-fg">{name}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
           {hospital}
           {other && (
-            <span className="rounded border border-accent/40 px-1.5 py-px text-[11px] text-accent">other hospital</span>
+            <span className="rounded-full bg-accent/10 px-2 py-px text-[11px] font-medium text-accent">other hospital</span>
           )}
         </p>
         <p className="mt-1.5 text-xs text-faint">
@@ -354,7 +348,7 @@ function MockRow({
         </p>
       </div>
       <span
-        className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium ${badge.className}`}
+        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
       >
         {badge.label}
       </span>
@@ -364,12 +358,12 @@ function MockRow({
 
 function AuditMock() {
   return (
-    <figure className="overflow-hidden rounded-xl border border-line bg-panel shadow-lift">
-      <figcaption className="flex items-center gap-2 border-b border-line bg-canvas px-4 py-2.5 text-xs font-medium text-muted">
+    <figure className="overflow-hidden rounded-2xl bg-panel shadow-lift">
+      <figcaption className="flex items-center gap-2 border-b border-line/70 px-5 py-3 text-xs font-medium text-muted">
         <History size={14} className="text-accent" aria-hidden />
         Ledger history · one record
       </figcaption>
-      <ol className="divide-y divide-line">
+      <ol className="divide-y divide-line/70">
         <LedgerLine
           action="ACCESS_REQUESTED"
           tone="text-warn"
@@ -399,7 +393,7 @@ function AuditMock() {
           tx="1a7c0b94e5d2"
         />
       </ol>
-      <p className="flex items-start gap-2 border-t border-line bg-canvas px-4 py-3 text-xs leading-relaxed text-muted">
+      <p className="flex items-start gap-2 border-t border-line/70 px-5 py-3.5 text-xs leading-relaxed text-muted">
         <CheckCircle2 size={14} className="mt-px shrink-0 text-ok" aria-hidden />
         Each entry is signed by the person who acted and cannot be edited afterwards.
       </p>
@@ -421,7 +415,7 @@ function LedgerLine({
   tx: string;
 }) {
   return (
-    <li className="px-4 py-3">
+    <li className="px-5 py-3.5">
       <div className="flex items-baseline justify-between gap-3">
         <span className={`font-mono text-[11px] font-medium uppercase tracking-wide ${tone}`}>{action}</span>
         <span className="font-mono text-[11px] text-faint">{tx}…</span>

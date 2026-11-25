@@ -1,0 +1,26 @@
+# Use after the Fabric and production overlays. See DEPLOY-ORACLE.md.
+services:
+  backend:
+    # Use the Fabric Docker network aliases from deploy/oracle/fabric-ca.yml.
+    extra_hosts: !reset []
+
+  caddy:
+    environment:
+      DOMAIN: ":80"
+    ports: !override
+      - "127.0.0.1:8080:80"
+
+  tunnel-gateway:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    volumes:
+      - ./deploy/oracle/Tunnel.Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - caddy
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://tunnel-gateway:8092
+    depends_on:
+      - tunnel-gateway

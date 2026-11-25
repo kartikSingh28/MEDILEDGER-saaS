@@ -1,0 +1,35 @@
+# Tailscale Funnel: a permanent https://mediledger.<tailnet>.ts.net link with
+# no domain and no open ports. Use after the Oracle overlay; it replaces the
+# temporary Cloudflare Quick Tunnel. See "Permanent link" in DEPLOY-ORACLE.md.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.fabric.yml \
+#     -f docker-compose.prod.yml -f docker-compose.oracle.yml \
+#     -f docker-compose.funnel.yml up -d --build
+#
+# Reads TS_AUTHKEY from .env for first enrollment (never commit it).
+services:
+  # Not started with this overlay. Funnel takes its place.
+  cloudflared:
+    profiles: ["quick-tunnel"]
+
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: mediledger
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_AUTH_ONCE: "true"
+      TS_HOSTNAME: mediledger
+      TS_STATE_DIR: /var/lib/tailscale
+      # No kernel TUN device needed; Funnel only has to proxy HTTP
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/tailscale-serve.json
+    volumes:
+      # Keeps the node identity, so the hostname and link survive restarts
+      - tailscale-state:/var/lib/tailscale
+      - ./deploy/oracle:/config:ro
+    depends_on:
+      - tunnel-gateway
+
+volumes:
+  tailscale-state:

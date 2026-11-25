@@ -1,0 +1,15 @@
+# Named Cloudflare Tunnel: a permanent https://<your-hostname> instead of the
+# random trycloudflare.com address. Use after the Oracle overlay.
+# See section 4c of DEPLOY-ORACLE.md.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.fabric.yml \
+#     -f docker-compose.prod.yml -f docker-compose.oracle.yml \
+#     -f docker-compose.tunnel.yml up -d --build
+#
+# Reads TUNNEL_TOKEN from .env (never commit it). The public hostname and its
+# target (http://tunnel-gateway:8092) are set in the Cloudflare dashboard.
+services:
+  cloudflared:
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in .env - see DEPLOY-ORACLE.md}

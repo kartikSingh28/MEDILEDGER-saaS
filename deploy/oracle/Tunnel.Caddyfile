@@ -1,0 +1,13 @@
+{
+	admin off
+}
+
+http://:8092 {
+	@foreignOrigin expression `{http.request.header.Origin} != "" && {http.request.header.Origin} != ("https://" + {http.request.host})`
+	respond @foreignOrigin 403
+	header Cache-Control "private, no-store"
+	reverse_proxy caddy:80 {
+		# The origin has been checked above. Express sees the request as same-origin.
+		header_up -Origin
+	}
+}

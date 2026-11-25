@@ -40,45 +40,45 @@ export function AppShell<K extends string>({
         key={item.key}
         onClick={() => onSelect(item.key)}
         aria-current={selected ? "page" : undefined}
-        className={`flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors md:w-full ${
-          selected ? "bg-accent/10 font-medium text-accent" : "text-muted hover:bg-raised hover:text-fg"
+        className={`flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-[15px] transition-colors md:w-full ${
+          selected ? "bg-raised font-medium text-fg" : "text-muted hover:bg-raised/60 hover:text-fg"
         }`}
       >
         <span className={selected ? "text-accent" : ""}>{item.icon}</span>
         <span>{item.label}</span>
         {item.count ? (
-          <span className="ml-auto rounded bg-accent/15 px-1.5 text-xs font-medium text-accent">{item.count}</span>
+          <span className="ml-auto min-w-[1.25rem] rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{item.count}</span>
         ) : null}
       </button>
     );
   });
 
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-panel md:flex">
-        <div className="px-5 py-5">
+    <div className="min-h-screen bg-canvas md:flex">
+      <aside className="glass sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line/70 md:flex">
+        <div className="px-5 pb-6 pt-6">
           <Wordmark />
         </div>
         <nav className="flex-1 space-y-0.5 px-3" aria-label="Main">
           {navButtons}
         </nav>
         {session && (
-          <div className="border-t border-line px-5 py-4">
+          <div className="m-3 rounded-2xl bg-panel px-4 py-4 shadow-panel">
             <p className="truncate text-sm font-medium text-fg">{session.name}</p>
             <p className="truncate text-xs text-muted">
               {roleLabels[session.role]} · {session.hospital}
             </p>
-            <button onClick={signOut} className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+            <button onClick={signOut} className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">
               <LogOut size={14} aria-hidden /> Sign out
             </button>
           </div>
         )}
       </aside>
 
-      <header className="border-b border-line bg-panel md:hidden">
+      <header className="glass sticky top-0 z-40 border-b border-line/70 md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <Wordmark />
-          <button onClick={signOut} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-fg">
+          <button onClick={signOut} className="inline-flex items-center gap-1.5 text-[13px] text-accent">
             <LogOut size={14} aria-hidden /> Sign out
           </button>
         </div>
@@ -87,7 +87,7 @@ export function AppShell<K extends string>({
         </nav>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
+      <main className="min-w-0 flex-1 px-4 py-8 sm:px-10 sm:py-12">
         <div className="mx-auto max-w-5xl">{children}</div>
       </main>
     </div>
