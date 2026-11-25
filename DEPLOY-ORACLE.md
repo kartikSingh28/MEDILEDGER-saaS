@@ -96,6 +96,93 @@ browser requests come from the same origin so the API works with the generated
 hostname. The app proxy also listens on the VM's loopback port `8080` for SSH
 forwarding and troubleshooting.
 
+## 4b. Permanent link with Tailscale Funnel
+
+The Quick Tunnel address changes whenever `cloudflared` restarts. Tailscale
+Funnel gives a fixed `https://mediledger.<tailnet>.ts.net` link for free, with
+no domain and no ports opened on the VM. Visitors do not need Tailscale.
+
+1. Sign up at [tailscale.com](https://login.tailscale.com/start) (free plan).
+2. In the admin console:
+   - **DNS** page: check that **MagicDNS** and **HTTPS Certificates** are
+     enabled. Note your tailnet name (for example `tail1a2b3c.ts.net`).
+   - **Access controls → JSON editor**: search for `funnel`. New tailnets
+     usually have it already. If not, add this at the top level and save:
+
+     ```json
+     "nodeAttrs": [
+       { "target": ["autogroup:member"], "attr": ["funnel"] }
+     ],
+     ```
+   - **Settings → Keys → Generate auth key**. Leave **Ephemeral** off. Copy
+     the key (`tskey-auth-…`).
+3. On the VM, use a text editor to set `TS_AUTHKEY` in the private `.env` beside
+   the Compose files. The app already calls the API at the relative path `/api`,
+   so the hostname can change without rebuilding the frontend.
+
+4. Start the app with the Funnel overlay:
+
+   ```sh
+   docker compose -f docker-compose.yml -f docker-compose.fabric.yml \
+     -f docker-compose.prod.yml -f docker-compose.oracle.yml \
+     -f docker-compose.funnel.yml up -d --build
+   docker logs mediledger-tailscale-1
+   docker exec mediledger-tailscale-1 tailscale funnel status
+   ```
+
+   `funnel status` should list `https://mediledger.<tailnet>.ts.net (Funnel on)`.
+   The public DNS name can take up to 10 minutes to work the first time. Once
+   the new link passes the checks in section 5, stop the old Quick Tunnel if
+   you no longer need its URL.
+
+The `tailscale-state` volume keeps the node identity across restarts. After
+enrollment, remove `TS_AUTHKEY` from `.env`, recreate only the `tailscale`
+service with the same Compose files, and verify the public URL again. You can
+revoke the bootstrap auth key afterwards. Renew the device authorization before
+its expiry to keep the link working.
+
+To go back to the Quick Tunnel, start without `docker-compose.funnel.yml`.
+
+## 4c. Permanent link on your own domain (named Cloudflare tunnel)
+
+The Quick Tunnel address changes whenever `cloudflared` restarts. A named
+tunnel keeps one fixed hostname. It needs a free Cloudflare account and a domain
+whose DNS is managed by Cloudflare (add the domain under **Websites → Add a
+domain** and switch its nameservers at your registrar).
+
+1. In the Cloudflare dashboard open **Zero Trust → Networks → Tunnels →
+   Create a tunnel**, choose **Cloudflared**, and name it `mediledger`.
+2. On the install step, copy the token from the shown command (the long string
+   after `--token`). You do not need to run that command.
+3. Under **Public Hostname**, add:
+   - Subdomain: `mediledger` (or any name), Domain: your domain
+   - Service type: `HTTP`, URL: `tunnel-gateway:8092`
+4. On the VM, add these to `.env` beside the compose files (replace the
+   hostname with yours):
+
+   ```sh
+   TUNNEL_TOKEN=<token from step 2>
+   CORS_ORIGIN=https://mediledger.example.com
+   VITE_API_URL=https://mediledger.example.com/api
+   ```
+
+5. Restart with the tunnel overlay. `--build` is needed because Vite inlines
+   `VITE_API_URL` into the frontend:
+
+   ```sh
+   docker compose -f docker-compose.yml -f docker-compose.fabric.yml \
+     -f docker-compose.prod.yml -f docker-compose.oracle.yml \
+     -f docker-compose.tunnel.yml up -d --build
+   docker logs mediledger-cloudflared-1
+   ```
+
+   The logs should show `Registered tunnel connection`. The tunnel page in the
+   dashboard should show it as **Healthy**.
+
+The link is now `https://mediledger.example.com` and survives restarts and
+reboots. Keep the token secret: anyone with it can serve traffic on that
+hostname. To revoke it, delete the tunnel in the dashboard.
+
 ## 5. Verify the demo
 
 1. Open `/api/health` at the tunnel URL and check for `{"status":"ok"}`.
@@ -110,4 +197,6 @@ For startup errors, check `docker logs mediledger-backend-1` and
 fresh fictional file for each presentation.
 
 [Hyperledger Fabric test network](https://hyperledger-fabric.readthedocs.io/en/release-2.5/test_network.html) ·
-[Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)
+[Cloudflare Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) ·
+[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) ·
+[Cloudflare named tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/)
